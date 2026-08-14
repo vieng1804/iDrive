@@ -1,0 +1,52 @@
+{
+  "id": "/",
+  "name": "iDrive Lao Pro",
+  "short_name": "iDrive",
+  "description": "ຮ້ອງລົດ · ສະເໜີລາຄາ · ແຜນທີ່ຈິງ · ປອດໄພ — ແອັບຮ້ອງລົດສຳລັບລາວ",
+  "lang": "lo",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0B0F17",
+  "theme_color": "#00FF66",
+  "categories": ["travel", "navigation", "lifestyle"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ຮ້ອງລົດດ່ວນ",
+      "short_name": "ຮ້ອງລົດ",
+      "description": "ເປີດໜ້າຈອງລົດ",
+      "url": "/?shortcut=ride",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
