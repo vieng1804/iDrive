@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="lo" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>iDrive Lao Pro — ແອັບຮ້ອງລົດສະເໜີລາຄາ</title>
+  <meta name="description" content="iDrive Lao Pro - Ride hailing with real map, live routing, and fare bargaining for Laos.">
+  <meta name="theme-color" content="#00FF66">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="iDrive">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{idrive:{green:'#00FF66',darkgreen:'#00B347',dark:'#0B0F17',card:'#131924',border:'#212B3B',accent:'#1E293B',hover:'#2A374E'}},fontFamily:{sans:['Noto Sans Lao Looped','Noto Sans Lao','sans-serif']}}}}</script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao+Looped:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script type="module" crossorigin src="./assets/index-DaKNgTbT.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-84uJRUUQ.css">
+</head>
+<body class="bg-gray-950 text-white h-screen flex items-center justify-center p-0 sm:p-3">
+<div id="app" class="w-full max-w-md h-screen sm:h-[892px] bg-idrive-dark sm:rounded-[36px] shadow-2xl overflow-hidden flex flex-col relative border border-gray-800/60">
+<!-- FLOW: SPLASH -->
+<div id="flow-splash" class="flow-screen items-center justify-center px-8">
+  <div class="text-center space-y-5">
+    <img src="./logo.svg" alt="iDrive" class="idrive-logo idrive-logo-xl splash-logo mx-auto" width="96" height="96">
+    <div>
+      <h1 class="text-3xl font-black tracking-tight">iDrive</h1>
+      <p class="text-sm text-gray-400 mt-2">ຮ້ອງລົດ · ສະເໜີລາຄາ · ປອດໄພ</p>
+    </div>
+    <div class="flex items-center justify-center gap-2 text-idrive-green text-xs font-bold">
+      <i class="fa-solid fa-circle-notch spinner"></i> ກຳລັງໂຫຼດ...
+    </div>
+  </div>
+</div>
+
+<!-- FLOW: ONBOARDING -->
+<div id="flow-onboarding" class="flow-screen hidden ob-flow" data-step="0">
+  <div class="ob-bg" aria-hidden="true">
+    <span class="ob-orb ob-orb-a"></span>
+    <span class="ob-orb ob-orb-b"></span>
+    <span class="ob-grid"></span>
+  </div>
+
+  <button type="button" onclick="onboardingSkip()" class="ob-skip">ຂ້າມ</button>
+
+  <div class="ob-stage">
+    <div class="ob-visual" id="ob-visual" aria-hidden="true">
+      <!-- Scene 0: fare bargain + taxi arrive -->
+      <div class="ob-scene is-active" data-scene="0">
+        <div class="ob-speed" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="ob-city">
+          <span class="ob-bldg b1"></span>
+          <span class="ob-bldg b2"></span>
+          <span class="ob-bldg b3"></span>
+          <span class="ob-bldg b4"></span>
+        </div>
+        <div class="ob-float-coins">
+          <span class="ob-coin c1">₭</span>
+          <span class="ob-coin c2">₭</span>
+          <span class="ob-coin c3">₭</span>
+        </div>
+        <div class="ob-fare-bubble">
+          <span class="ob-fare-tag">ສະເໜີ</span>
+          <strong>35,000 ₭</strong>
+        </div>
+        <div class="ob-road">
+          <div class="ob-lane"></div>
+          <div class="ob-taxi-wrap">
+            <span class="ob-headlight"></span>
+            <svg class="ob-taxi" viewBox="0 0 160 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse class="ob-taxi-shadow" cx="80" cy="66" rx="48" ry="4" fill="#000" opacity="0.35"/>
+              <g class="ob-taxi-body">
+                <path d="M28 46h104c6 0 10-4 10-9v-6c0-8-6-14-14-16l-18-4c-4-6-12-10-22-10H72c-10 0-18 4-22 10l-14 4C28 17 22 24 22 32v5c0 5 3 9 6 9z" fill="#00FF66"/>
+                <path d="M54 18h40c7 0 13 3 16 8H40c3-5 8-8 14-8z" fill="#0B0F17" opacity="0.22"/>
+                <path d="M48 20h20v14H44c1-6 3-11 4-14z" fill="#E8FFF2" opacity="0.85"/>
+                <path d="M74 20h34c3 2 5 7 6 14H74V20z" fill="#E8FFF2" opacity="0.85"/>
+                <rect x="70" y="10" width="20" height="7" rx="2" fill="#0B0F17"/>
+                <text x="80" y="16" text-anchor="middle" font-size="6" font-weight="800" fill="#00FF66" font-family="system-ui,sans-serif">TAXI</text>
+                <circle cx="132" cy="38" r="3" fill="#FFF7AD"/>
+                <rect x="26" y="38" width="8" height="4" rx="1" fill="#fff" opacity="0.55"/>
+                <path d="M34 46h92" stroke="#0B0F17" stroke-opacity="0.15" stroke-width="2"/>
+              </g>
+              <g transform="translate(48 48)">
+                <g class="ob-wheel w-l">
+                  <circle r="10" fill="#0B0F17"/><circle r="5" fill="#2A374E"/><circle r="1.5" fill="#00FF66"/>
+                </g>
+              </g>
+              <g transform="translate(112 48)">
+                <g class="ob-wheel w-r">
+                  <circle r="10" fill="#0B0F17"/><circle r="5" fill="#2A374E"/><circle r="1.5" fill="#00FF66"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <div class="ob-pin-person">
+            <span class="ob-person-dot"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 1: live map / route -->
+      <div class="ob-scene" data-scene="1">
+        <div class="ob-map-card">
+          <div class="ob-map-grid"></div>
+          <svg class="ob-route" viewBox="0 0 220 140" fill="none">
+            <path class="ob-route-line" pathLength="1" d="M36 108 C70 108, 80 40, 120 40 S170 90, 186 52" stroke="#00FF66" stroke-width="3" stroke-linecap="round"/>
+            <circle class="ob-map-pin start" cx="36" cy="108" r="8" fill="#00FF66"/>
+            <circle cx="36" cy="108" r="3.5" fill="#0B0F17"/>
+            <circle class="ob-map-pin end" cx="186" cy="52" r="8" fill="#FACC15"/>
+            <circle cx="186" cy="52" r="3.5" fill="#0B0F17"/>
+          </svg>
+          <div class="ob-mini-taxi">
+            <i class="fa-solid fa-taxi"></i>
+          </div>
+        </div>
+        <div class="ob-gps-ring"></div>
+      </div>
+
+      <!-- Scene 2: safety -->
+      <div class="ob-scene" data-scene="2">
+        <div class="ob-shield-wrap">
+          <div class="ob-shield-pulse"></div>
+          <div class="ob-shield">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="ob-safe-chips">
+            <span class="ob-chip"><i class="fa-solid fa-phone"></i> ໂທ</span>
+            <span class="ob-chip"><i class="fa-solid fa-comment"></i> ແຊັດ</span>
+            <span class="ob-chip sos"><i class="fa-solid fa-bell"></i> SOS 1191</span>
+          </div>
+        </div>
+        <div class="ob-road ob-road-soft">
+          <div class="ob-lane"></div>
+          <div class="ob-taxi-wrap ob-taxi-cruise">
+            <svg class="ob-taxi" viewBox="0 0 160 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse class="ob-taxi-shadow" cx="80" cy="66" rx="48" ry="4" fill="#000" opacity="0.35"/>
+              <g class="ob-taxi-body">
+                <path d="M28 46h104c6 0 10-4 10-9v-6c0-8-6-14-14-16l-18-4c-4-6-12-10-22-10H72c-10 0-18 4-22 10l-14 4C28 17 22 24 22 32v5c0 5 3 9 6 9z" fill="#00FF66"/>
+                <path d="M54 18h40c7 0 13 3 16 8H40c3-5 8-8 14-8z" fill="#0B0F17" opacity="0.22"/>
+                <path d="M48 20h20v14H44c1-6 3-11 4-14z" fill="#E8FFF2" opacity="0.85"/>
+                <path d="M74 20h34c3 2 5 7 6 14H74V20z" fill="#E8FFF2" opacity="0.85"/>
+                <rect x="70" y="10" width="20" height="7" rx="2" fill="#0B0F17"/>
+                <text x="80" y="16" text-anchor="middle" font-size="6" font-weight="800" fill="#00FF66" font-family="system-ui,sans-serif">TAXI</text>
+                <circle cx="132" cy="38" r="3" fill="#FFF7AD"/>
+              </g>
+              <g transform="translate(48 48)">
+                <g class="ob-wheel w-l">
+                  <circle r="10" fill="#0B0F17"/><circle r="5" fill="#2A374E"/><circle r="1.5" fill="#00FF66"/>
+                </g>
+              </g>
+              <g transform="translate(112 48)">
+                <g class="ob-wheel w-r">
+                  <circle r="10" fill="#0B0F17"/><circle r="5" fill="#2A374E"/><circle r="1.5" fill="#00FF66"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-copy" id="ob-copy">
+      <p class="ob-kicker" id="ob-kicker">ຂັ້ນຕອນ 1 / 3</p>
+      <h2 id="ob-title" class="ob-title">ສະເໜີລາຄາເອງ</h2>
+      <p id="ob-desc" class="ob-desc">ກຳນົດຄ່າໂດຍສານຕາມໃຈ ແລ້ວໃຫ້ຄົນຂັບຕໍ່ລອງ — ແບບ inDrive ຈິງ</p>
+      <div id="ob-dots" class="ob-dots"></div>
+    </div>
+  </div>
+
+  <div class="ob-actions">
+    <button type="button" id="ob-next" onclick="onboardingNext()" class="ob-cta glow-green">ຕໍ່ໄປ</button>
+  </div>
+</div>
+
+<!-- FLOW: AUTH -->
+<div id="flow-auth" class="flow-screen hidden px-6 pb-10 pt-12 justify-center">
+  <div class="w-full max-w-sm space-y-6 my-auto">
+    <div class="text-center space-y-2">
+      <img src="./logo.svg" alt="iDrive" class="idrive-logo idrive-logo-lg mx-auto" width="64" height="64">
+      <h2 class="text-2xl font-black">ເຂົ້າສູ່ລະບົບ</h2>
+      <p class="text-xs text-gray-400">ໃຊ້ເບີໂທລາວເພື່ອເລີ່ມຮ້ອງລົດ</p>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ຊື່</label>
+        <input id="auth-name" class="auth-input mt-1" type="text" placeholder="ຊື່ຂອງທ່ານ" value="ທ່ານ ສົມພອນ ແກ້ວມະນີ">
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ເບີໂທ</label>
+          <div class="phone-field mt-1">
+            <span class="phone-prefix">+856</span>
+            <input id="auth-phone" class="auth-input" type="tel" inputmode="numeric" placeholder="20 XXXX XXXX" value="2055889900">
+          </div>
+      </div>
+      <div id="auth-otp-box" class="hidden">
+        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ລະຫັດ OTP</label>
+        <input id="auth-otp" class="auth-input mt-1 tracking-[0.4em] text-center text-lg" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+      </div>
+      <p id="auth-hint" class="text-[11px] text-gray-500 text-center">ກົດສົ່ງ OTP ເພື່ອຢືນຢັນເບີ</p>
+    </div>
+    <button id="auth-login-btn" onclick="submitLogin()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">ສົ່ງ OTP</button>
+    <p class="text-[10px] text-center text-gray-600">ເຂົ້າສູ່ລະບົບແມ່ນຍອມຮັບເງື່ອນໄຂການໃຊ້ງານ iDrive</p>
+  </div>
+</div>
+
+
+  <div id="app-shell" class="hidden flex flex-col h-full min-h-0">
+
+  <!-- HEADER -->
+  <header id="app-header" class="app-header">
+    <div class="app-header-left">
+      <button type="button" onclick="toggleSidebar(true)" class="header-icon-btn" aria-label="ເມນູ">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="app-brand" aria-label="iDrive">
+        <img src="./logo.svg" alt="" class="idrive-logo idrive-logo-sm app-brand-mark" width="28" height="28">
+        <div class="app-brand-text">
+          <span class="app-brand-name">iDrive</span>
+          <span id="role-badge" class="app-brand-role">ຜູ້ໂດຍສານ</span>
+        </div>
+      </div>
+    </div>
+    <div class="app-header-right">
+      <button type="button" id="role-toggle-btn" onclick="switchRole()" class="header-role-btn" title="ສະຫຼັບໂໝດ" aria-label="ສະຫຼັບໂໝດຄົນຂັບ">
+        <i id="role-toggle-icon" class="fa-solid fa-car-side"></i>
+        <span id="switch-role-text" class="sr-only">ໂໝດຄົນຂັບ</span>
+      </button>
+      <button type="button" onclick="openScreen('notifications')" class="header-icon-btn" aria-label="ການແຈ້ງເຕືອນ">
+        <i class="fa-solid fa-bell"></i>
+        <span id="notif-badge" class="header-notif-badge hidden">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar" class="fixed inset-0 bg-black/70 z-50 transform -translate-x-full transition-transform duration-300 flex">
+    <div class="w-4/5 max-w-xs bg-idrive-card h-full p-5 flex flex-col justify-between border-r border-idrive-border shadow-2xl overflow-y-auto">
+      <div>
+        <div class="flex items-center gap-3.5 pb-5 border-b border-idrive-border">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-idrive-green to-emerald-400 p-0.5 shadow-md">
+            <div class="w-full h-full bg-idrive-card rounded-[14px] flex items-center justify-center text-xl text-idrive-green"><i class="fa-solid fa-user-gear"></i></div>
+          </div>
+          <div>
+            <h3 data-user-name class="font-extrabold text-base">ທ່ານ ສົມພອນ ແກ້ວມະນີ</h3>
+            <p data-user-phone class="text-[11px] text-gray-400">+856 20 5588 9900</p>
+            <div class="flex items-center text-yellow-400 text-xs gap-1 mt-1"><i class="fa-solid fa-star"></i><span class="font-bold text-white">4.96</span><span class="text-gray-400 text-[10px]">(54 ທ່ຽວ)</span></div>
+          </div>
+        </div>
+        <nav class="mt-5 space-y-1 text-sm font-medium">
+          <button onclick="setSvc('city');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-idrive-accent text-idrive-green font-bold"><i class="fa-solid fa-car w-5 text-lg"></i><span>ເດີນທາງໃນເມືອງ</span></button>
+          <button onclick="setSvc('intercity');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-city w-5 text-lg text-yellow-400"></i><span>ເດີນທາງຕ່າງແຂວງ</span></button>
+          <button onclick="setSvc('freight');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-truck-ramps w-5 text-lg text-blue-400"></i><span>ຂົນສົ່ງສິນຄ້າ</span></button>
+          <button onclick="setSvc('courier');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-box w-5 text-lg text-orange-400"></i><span>ສົ່ງພັດສະດຸ</span></button>
+          <hr class="border-idrive-border my-3">
+          <button onclick="openActivityPage()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-clock-rotate-left w-5 text-lg text-gray-400"></i><span>ປະຫວັດການເດີນທາງ</span></button>
+          <button onclick="openWalletPage()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-wallet w-5 text-lg text-emerald-400"></i><span>ກະເປົ໋າເງິນ & QR</span></button>
+          <button onclick="openModal('sos-modal');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-red-400 transition"><i class="fa-solid fa-shield-halved w-5 text-lg text-red-500"></i><span>ສູນຄວາມປອດໄພ SOS</span></button>
+          <button onclick="openDriverApply();toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-id-card w-5 text-lg text-idrive-green"></i><span>ສະໝັກຂັບລົດ</span></button>
+          <button onclick="openScreen('settings')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-gear w-5 text-lg text-gray-400"></i><span>ຕັ້ງຄ່າແອັບ</span></button>
+        </nav>
+      </div>
+      <div class="pt-4 border-t border-idrive-border">
+        <button onclick="logout()" class="w-full text-left flex items-center gap-3 text-red-400 hover:text-red-300 text-sm py-2 font-medium"><i class="fa-solid fa-right-from-bracket"></i><span>ອອກຈາກລະບົບ</span></button>
+        <p class="text-[10px] text-gray-500 mt-2 font-mono">iDrive Lao Pro v8.1 • UX Complete</p>
+      </div>
+    </div>
+    <div class="flex-1" onclick="toggleSidebar(false)"></div>
+  </div>
+
+  <!-- HOME (MAP) -->
+  <div id="screen-home" class="flex flex-col flex-1 min-h-0">
+  <main class="flex-1 relative overflow-hidden">
+    <div id="map" class="w-full h-full z-0"></div>
+
+    <!-- Simplified top chrome -->
+    <div id="map-chrome" class="map-chrome">
+      <!-- Map-expand search (shown when sheet is peeked) -->
+      <div id="map-search-panel" class="map-search-panel hidden">
+        <div class="map-search-row">
+          <button type="button" class="map-search-icon-btn" onclick="toggleMapExpand()" title="ປິດແຜນທີ່ເຕັມ">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="map-search-field">
+            <i class="fa-solid fa-magnifying-glass map-search-ico"></i>
+            <input id="map-search-input" type="text" autocomplete="off"
+              placeholder="ຄົ້ນຫາສະຖານທີ່..."
+              oninput="onMapSearch(this)"
+              onfocus="onMapSearchFocus()">
+            <div id="map-search-drop" class="search-drop hidden"></div>
+          </div>
+          <button type="button" class="map-search-icon-btn" onclick="getCurrentLocation()" title="GPS">
+            <i class="fa-solid fa-location-crosshairs text-idrive-green"></i>
+          </button>
+        </div>
+        <div class="map-search-targets">
+          <button type="button" id="map-target-pickup" class="map-target-chip" onclick="setMapSearchTarget('pickup')">
+            <span class="loc-dot loc-dot-pick"></span>ຕົ້ນທາງ
+          </button>
+          <button type="button" id="map-target-dest" class="map-target-chip" onclick="setMapSearchTarget('dest')">
+            <span class="loc-dot loc-dot-dest"></span>ປາຍທາງ
+          </button>
+          <button type="button" class="map-target-chip map-target-confirm" onclick="confirmMapCenter()">
+            <i class="fa-solid fa-map-pin"></i>ໃຊ້ຈຸດກາງ
+          </button>
+        </div>
+      </div>
+
+      <div class="map-chrome-row map-chrome-default">
+        <div class="map-service-scroll no-scrollbar">
+          <button id="pill-city" onclick="setSvc('city')" class="svc-pill px-3 py-1.5 rounded-full bg-idrive-card text-white text-[11px] font-bold shadow-lg border border-idrive-green flex items-center gap-1.5 whitespace-nowrap glow-green-sm"><i class="fa-solid fa-car text-idrive-green text-[10px]"></i>ໃນເມືອງ</button>
+          <button id="pill-intercity" onclick="setSvc('intercity')" class="svc-pill px-3 py-1.5 rounded-full bg-idrive-card text-gray-300 text-[11px] font-bold shadow-lg border border-idrive-border flex items-center gap-1.5 whitespace-nowrap hover:text-white"><i class="fa-solid fa-city text-yellow-400 text-[10px]"></i>ຕ່າງແຂວງ</button>
+          <button id="pill-freight" onclick="setSvc('freight')" class="svc-pill px-3 py-1.5 rounded-full bg-idrive-card text-gray-300 text-[11px] font-bold shadow-lg border border-idrive-border flex items-center gap-1.5 whitespace-nowrap hover:text-white"><i class="fa-solid fa-truck text-blue-400 text-[10px]"></i>ຂົນສົ່ງ</button>
+          <button id="pill-courier" onclick="setSvc('courier')" class="svc-pill px-3 py-1.5 rounded-full bg-idrive-card text-gray-300 text-[11px] font-bold shadow-lg border border-idrive-border flex items-center gap-1.5 whitespace-nowrap hover:text-white"><i class="fa-solid fa-box text-orange-400 text-[10px]"></i>ດ່ວນ</button>
+        </div>
+        <div class="map-tools shrink-0 flex gap-1.5">
+          <button onclick="recenterMap()" class="map-tool-btn" title="ໂຟກັສ"><i class="fa-solid fa-crosshairs text-idrive-green"></i></button>
+          <button onclick="toggleMapStyle()" class="map-tool-btn" title="ຊັ້ນແຜນທີ່"><i id="map-style-icon" class="fa-solid fa-layer-group text-gray-300"></i></button>
+          <button onclick="getCurrentLocation()" class="map-tool-btn" title="GPS"><i class="fa-solid fa-location-arrow text-blue-400"></i></button>
+        </div>
+      </div>
+
+      <div class="map-tools-float hidden">
+        <button onclick="recenterMap()" class="map-tool-btn" title="ໂຟກັສ"><i class="fa-solid fa-crosshairs text-idrive-green"></i></button>
+        <button onclick="toggleMapStyle()" class="map-tool-btn" title="ຊັ້ນແຜນທີ່"><i class="fa-solid fa-layer-group text-gray-300"></i></button>
+      </div>
+
+      <div id="route-bar" class="hidden map-route-row">
+        <span id="route-dist" class="route-badge"><i class="fa-solid fa-road"></i> —</span>
+        <span id="route-time" class="route-badge"><i class="fa-solid fa-clock"></i> —</span>
+      </div>
+
+      <div id="map-pick-hint" class="map-pick-hint-bar">
+        <span id="map-pick-hint-text">ແຕະແຜນທີ່ເພື່ອຕັ້ງຕົ້ນທາງ</span>
+      </div>
+    </div>
+
+    <div id="map-crosshair" class="map-crosshair pointer-events-none crosshair-dest" aria-hidden="true">
+      <div class="crosshair-pin"></div>
+      <div class="crosshair-shadow"></div>
+    </div>
+
+    <!-- Expand map -->
+    <button type="button" id="map-expand-btn" class="map-expand-fab" onclick="toggleMapExpand()" aria-pressed="false" title="ຂະຫຍາຍແຜນທີ່">
+      <i class="fa-solid fa-expand"></i>
+    </button>
+
+    <!-- PASSENGER BOTTOM SHEET -->
+    <div id="passenger-sheet" class="passenger-sheet glass" data-snap="mid">
+      <div id="sheet-handle" class="sheet-handle" role="button" aria-label="ລາກເພື່ອຂະຫຍາຍ/ຫຍໍ້ແຜ່ນ" tabindex="0">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-peek-label">
+          <span>ເປີດແຜ່ນຈອງ</span>
+          <i class="fa-solid fa-chevron-up"></i>
+        </div>
+      </div>
+
+      <div id="sheet-body" class="sheet-body">
+      <div id="booking-form">
+        <!-- STEP: LOCATION -->
+        <div id="loc-step" class="px-4 pb-4 space-y-3">
+          <div class="loc-card">
+            <div class="loc-row" onclick="focusLocField('pickup')">
+              <span class="loc-dot loc-dot-pick"></span>
+              <div class="flex-1 min-w-0 text-left relative">
+                <span class="loc-label">ຕົ້ນທາງ</span>
+                <input id="pickup-input" type="text" autocomplete="off" placeholder="ຈຸດຮັບຂອງທ່ານ"
+                  value=""
+                  class="loc-input"
+                  oninput="onSearch(this,'pickup')"
+                  onfocus="focusLocField('pickup')">
+                <div id="pickup-drop" class="search-drop hidden"></div>
+              </div>
+              <button type="button" onclick="event.stopPropagation();getCurrentLocation()" class="loc-action" title="GPS"><i class="fa-solid fa-location-crosshairs"></i></button>
+            </div>
+            <div class="loc-divider">
+              <button type="button" onclick="swapLocations()" class="loc-swap" title="ສະຫຼັບ"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
+            </div>
+            <div class="loc-row" onclick="focusLocField('dest')">
+              <span class="loc-dot loc-dot-dest"></span>
+              <div class="flex-1 min-w-0 text-left relative">
+                <span class="loc-label">ປາຍທາງ</span>
+                <input id="dest-input" type="text" autocomplete="off" placeholder="ທ່ານຈະໄປໃສ?"
+                  value=""
+                  class="loc-input"
+                  oninput="onSearch(this,'dest')"
+                  onfocus="focusLocField('dest')">
+                <div id="dest-drop" class="search-drop hidden"></div>
+              </div>
+              <button type="button" onclick="event.stopPropagation();confirmMapCenter()" class="loc-action" title="ຈຸດກາງແຜນທີ່"><i class="fa-solid fa-map-pin"></i></button>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-[10px] text-gray-500 font-bold mb-1.5 px-0.5">ສະຖານທີ່ແນະນຳ</p>
+            <div id="quick-places" class="quick-places no-scrollbar"></div>
+          </div>
+
+          <button id="btn-to-ride" type="button" onclick="showRideStep()" class="w-full bg-idrive-green text-gray-950 font-black py-3.5 rounded-2xl text-sm glow-green flex items-center justify-center gap-2">
+            ຕໍ່ໄປ — ເລືອກລົດ & ລາຄາ <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <!-- STEP: RIDE OPTIONS -->
+        <div id="ride-step" class="hidden">
+          <button type="button" onclick="showLocationStep()" class="loc-summary loc-summary-compact" id="loc-summary-btn">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="loc-summary-rail" aria-hidden="true"></div>
+              <div class="min-w-0 text-left space-y-0.5">
+                <p class="text-[11px] text-gray-400 truncate"><span class="text-idrive-green font-bold">ຮັບ</span> · <span id="sum-pickup">—</span></p>
+                <p class="text-[11px] text-gray-400 truncate"><span class="text-red-400 font-bold">ສົ່ງ</span> · <span id="sum-dest">—</span></p>
+              </div>
+            </div>
+            <span class="text-[10px] text-idrive-green font-bold shrink-0">ແກ້ໄຂ</span>
+          </button>
+
+          <div class="ride-scroll">
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="text-[11px] font-bold text-gray-300">ປະເພດລົດ</label>
+              <div id="route-loading" class="hidden items-center gap-1 text-[10px] text-gray-400 flex">
+                <i class="fa-solid fa-circle-notch spinner text-idrive-green text-xs"></i> ຄຳນວນ...
+              </div>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button onclick="selectVehicle('ride',30000)" id="v-ride" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-accent border-2 border-idrive-green text-center flex flex-col items-center gap-0.5 transition glow-green-sm">
+                <i class="fa-solid fa-car text-idrive-green text-base"></i>
+                <span class="text-[9px] font-bold">ເກັງ</span>
+                <span id="price-ride" class="text-[8px] text-gray-400">30,000 ₭</span>
+              </button>
+              <button onclick="selectVehicle('moto',15000)" id="v-moto" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+                <i class="fa-solid fa-motorcycle text-yellow-400 text-base"></i>
+                <span class="text-[9px] font-bold">ມໍໄຊ</span>
+                <span id="price-moto" class="text-[8px] text-gray-400">15,000 ₭</span>
+              </button>
+              <button onclick="selectVehicle('comfort',50000)" id="v-comfort" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+                <i class="fa-solid fa-car-side text-blue-400 text-base"></i>
+                <span class="text-[9px] font-bold">ຄອມຟອດ</span>
+                <span id="price-comfort" class="text-[8px] text-gray-400">50,000 ₭</span>
+              </button>
+              <button onclick="selectVehicle('suv',65000)" id="v-suv" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+                <i class="fa-solid fa-truck-pickup text-purple-400 text-base"></i>
+                <span class="text-[9px] font-bold">SUV</span>
+                <span id="price-suv" class="text-[8px] text-gray-400">65,000 ₭</span>
+              </button>
+            </div>
+
+            <div class="bg-idrive-dark p-2.5 rounded-xl border border-idrive-border mt-2.5">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-extrabold flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-idrive-green"></i>ສະເໜີລາຄາ</span>
+                <span id="suggested-label" class="text-[10px] text-idrive-green font-bold">ແນະນຳ: 30,000 ₭</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="adjFare(-5000)" class="w-9 h-9 bg-idrive-accent rounded-lg text-lg font-black border border-idrive-border">−</button>
+                <div class="flex-1 text-center">
+                  <div class="flex items-center justify-center gap-1">
+                    <input type="number" id="fare-input" value="30000" step="5000" class="w-24 bg-transparent text-center font-black text-xl text-idrive-green focus:outline-none">
+                    <span class="text-xs text-gray-400 font-extrabold">₭</span>
+                  </div>
+                </div>
+                <button onclick="adjFare(5000)" class="w-9 h-9 bg-idrive-accent rounded-lg text-lg font-black border border-idrive-border">+</button>
+              </div>
+            </div>
+
+            <div class="ride-note-row">
+              <input type="text" id="note-input" placeholder="ໝາຍເຫດ (ທາງເລືອກ)" class="flex-1 bg-idrive-dark text-xs px-3 py-2.5 rounded-xl border border-idrive-border text-white focus:outline-none focus:border-idrive-green placeholder-gray-500 min-w-0">
+              <button type="button" onclick="openPaymentSheet()" class="ride-pay-btn">
+                <i id="pay-icon" class="fa-solid fa-money-bill-wave text-idrive-green text-sm"></i>
+                <span id="pay-label" class="font-bold">ເງິນສົດ</span>
+              </button>
+            </div>
+          </div>
+
+          <button onclick="findDriver()" class="ride-cta w-full bg-idrive-green hover:bg-idrive-darkgreen text-gray-950 font-black py-3 rounded-xl text-sm shadow-xl glow-green flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i><span>ປະກາດຫາຄົນຂັບ</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: SEARCHING -->
+      <div id="searching-view" class="hidden px-4 pb-4 space-y-4">
+        <div class="text-center py-3">
+          <div class="w-20 h-20 rounded-full bg-idrive-green/20 border-2 border-idrive-green mx-auto flex items-center justify-center relative shadow-xl">
+            <i class="fa-solid fa-car-side text-idrive-green text-3xl animate-float"></i>
+            <div class="absolute inset-0 rounded-full border-2 border-idrive-green radar-pulse"></div>
+          </div>
+          <h3 class="font-extrabold text-base mt-3">ກຳລັງຮັບຂໍ້ສະເໜີຈາກຄົນຂັບ...</h3>
+          <p class="text-xs text-gray-400 mt-1">ລາຄາທີ່ທ່ານສະເໜີ: <span id="offered-price-txt" class="text-idrive-green font-extrabold text-sm">30,000 ₭</span></p>
+          <p class="text-[10px] text-gray-500 mt-1">ແບບ InDrive — ຕົກລົງ ຫຼື ຕໍ່ລາຄາກັບຄົນຂັບ</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-gray-200">ຂໍ້ສະເໜີ (<span id="bid-count">0</span>):</span>
+            <span class="text-[10px] text-idrive-green font-semibold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-idrive-green animate-ping inline-block"></span>Live</span>
+          </div>
+          <div id="bids-container" class="space-y-2.5 max-h-56 overflow-y-auto pr-1"></div>
+        </div>
+        <p class="text-[10px] text-center text-gray-500">ຫຼືສະຫຼັບໄປ <button onclick="switchRole()" class="text-idrive-green font-bold underline">ໂໝດຄົນຂັບ</button> ເພື່ອຮັບງານດ້ວຍຕົນເອງ</p>
+        <button onclick="cancelRequest()" class="w-full bg-idrive-accent hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-3 rounded-2xl text-xs transition">ຍົກເລີກ (Cancel)</button>
+      </div>
+
+      <!-- STEP 3: ACTIVE TRIP -->
+      <div id="trip-view" class="hidden px-4 pb-4 space-y-3">
+        <div class="bg-idrive-green/10 border border-idrive-green/40 p-3.5 rounded-2xl flex items-center justify-between shadow-md">
+          <div class="flex items-center gap-2.5">
+            <span class="relative flex h-3 w-3"><span class="animate-ping absolute inset-0 rounded-full bg-idrive-green opacity-75"></span><span class="relative rounded-full h-3 w-3 bg-idrive-green"></span></span>
+            <div>
+              <span id="trip-status" class="text-xs font-black text-idrive-green block">ຄົນຂັບກຳລັງເດີນທາງ...</span>
+              <span id="trip-sub" class="text-[10px] text-gray-400">ຖ້າຢູ່ຈຸດຮັບ</span>
+            </div>
+          </div>
+          <span id="eta-badge" class="text-xs bg-idrive-dark text-white px-3 py-1.5 rounded-full font-black border border-idrive-border">⏱ —</span>
+        </div>
+        <div class="bg-idrive-dark p-4 rounded-2xl border border-idrive-border flex items-center justify-between shadow-lg">
+          <div class="flex items-center gap-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-gray-800 overflow-hidden border-2 border-idrive-green shrink-0 shadow">
+              <img id="trip-driver-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+            </div>
+            <div>
+              <h4 id="trip-driver-name" class="font-extrabold text-sm">ທ່ານ ສົມໄຊ</h4>
+              <p id="trip-driver-car" class="text-xs text-idrive-green font-bold">Toyota Vios</p>
+              <div class="flex items-center text-xs text-yellow-400 gap-1 mt-1"><i class="fa-solid fa-star"></i><span class="font-bold text-white" id="trip-driver-rating">4.92</span></div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openModal('chat-modal')" class="w-11 h-11 bg-idrive-accent text-idrive-green rounded-2xl flex items-center justify-center border border-idrive-border hover:bg-gray-700 transition active:scale-95 shadow"><i class="fa-solid fa-comment-dots text-xl"></i></button>
+            <button onclick="startCall()" class="w-11 h-11 bg-idrive-green text-gray-950 rounded-2xl flex items-center justify-center font-bold hover:bg-idrive-darkgreen transition active:scale-95 shadow glow-green-sm"><i class="fa-solid fa-phone text-lg"></i></button>
+          </div>
+        </div>
+        <div class="bg-idrive-dark p-3 rounded-xl border border-idrive-border text-xs space-y-1.5">
+          <div class="flex justify-between"><span class="text-gray-400">ລາຄາຕົກລົງ:</span><span id="trip-price" class="font-black text-idrive-green text-sm">30,000 ₭</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">ໄລຍະທາງ:</span><span id="trip-distance" class="text-gray-200 font-bold">— ກມ</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">ວິທີຊໍາລະ:</span><span id="trip-payment" class="text-gray-200 font-bold">ເງິນສົດ</span></div>
+        </div>
+        <button id="complete-trip-btn" onclick="completeTrip()" class="w-full bg-idrive-accent hover:bg-idrive-green hover:text-gray-950 text-idrive-green font-black py-3 rounded-2xl text-xs border border-idrive-green transition opacity-50 pointer-events-none">ລໍຖ້າຮອດຈຸດໝາຍ...</button>
+      </div>
+      </div><!-- /sheet-body -->
+    </div><!-- /passenger-sheet -->
+
+    <!-- DRIVER PANEL -->
+    <div id="driver-panel" class="hidden absolute left-0 right-0 z-20 glass rounded-t-[28px] border-t border-idrive-border shadow-2xl max-h-[86vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-gray-600 rounded-full mx-auto my-3 opacity-60"></div>
+      <div class="px-4 pb-4 space-y-3">
+        <div class="flex items-center justify-between pb-3 border-b border-idrive-border">
+          <div>
+            <h3 class="font-black text-base">ໂໝດຄົນຂັບ (Driver Mode)</h3>
+            <p id="driver-status-txt" class="text-xs text-idrive-green font-bold">🟢 ພ້ອມຮັບງານ</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="driver-online" checked onchange="toggleDriverOnline()" class="sr-only peer">
+            <div class="w-12 h-6 bg-gray-700 rounded-full peer peer-checked:bg-idrive-green after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ລາຍໄດ້</span><span id="driver-earn" class="text-sm font-black text-idrive-green">0 ₭</span></div>
+          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ທ່ຽວ</span><span id="driver-trips" class="text-sm font-black text-white">0</span></div>
+          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ຄະແນນ</span><span id="driver-rating-stat" class="text-sm font-black text-yellow-400">4.95 ★</span></div>
+        </div>
+        <div id="driver-active" class="hidden"></div>
+        <button type="button" onclick="openDriverApply()" class="w-full text-left da-perk !py-3">
+          <i class="fa-solid fa-id-card"></i>
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-sm">ຂໍ້ມູນຄົນຂັບ</p>
+            <p class="text-[11px] text-gray-400 truncate">ເບິ່ງ / ແກ້ໄຂການສະໝັກ</p>
+          </div>
+          <i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>
+        </button>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-gray-200">ງານໃກ້ທ່ານ (<span id="driver-job-count">0</span>):</span>
+            <button onclick="renderDriverFeed()" class="text-xs text-idrive-green flex items-center gap-1 font-bold hover:underline"><i class="fa-solid fa-rotate-right"></i>ອັບເດດ</button>
+          </div>
+          <div id="driver-feed" class="space-y-3 max-h-72 overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+<!-- PAGE: ACTIVITY -->
+<section id="screen-activity" class="page-screen hidden">
+  <div class="page-header">
+    <h1 class="font-black text-lg flex-1">ກິດຈະກຳ</h1>
+    <button onclick="goTab('home')" class="text-xs text-idrive-green font-bold">ຮ້ອງລົດ</button>
+  </div>
+  <div class="px-4 py-4 space-y-4">
+    <p class="text-xs text-gray-400">ປະຫວັດທ່ຽວທັງໝົດຂອງທ່ານ</p>
+    <div id="activity-list" class="space-y-3"></div>
+  </div>
+</section>
+
+<!-- PAGE: WALLET -->
+<section id="screen-wallet" class="page-screen hidden">
+  <div class="page-header">
+    <h1 class="font-black text-lg flex-1">ກະເປົ໋າເງິນ</h1>
+    <button onclick="walletTopUp(50000)" class="text-xs bg-idrive-green/15 text-idrive-green border border-idrive-green/30 px-3 py-1.5 rounded-full font-bold">+ ເຕີມ</button>
+  </div>
+  <div class="px-4 py-4 space-y-4">
+    <div class="bg-gradient-to-br from-emerald-600 to-teal-900 p-5 rounded-3xl border border-emerald-400/20 shadow-xl">
+      <p class="text-[10px] font-bold uppercase tracking-wider opacity-80">ຍອດເງິນ</p>
+      <h2 id="wallet-page-balance" class="text-3xl font-black mt-1">0 LAK</h2>
+      <div class="flex justify-between mt-4 text-[11px] opacity-90">
+        <span>ລາຍໄດ້ຄົນຂັບ: <b id="wallet-page-earn">0 ₭</b></span>
+        <span class="bg-black/25 px-2 py-0.5 rounded-full font-bold">Active</span>
+      </div>
+    </div>
+    <div>
+      <h3 class="text-xs font-bold text-gray-300 mb-2">ວິທີຊຳລະເລີ່ມຕົ້ນ</h3>
+      <div class="space-y-2">
+        <button onclick="selectPayMethod('cash','ເງິນສົດ','fa-money-bill-wave','text-idrive-green')" class="menu-row"><i class="fa-solid fa-money-bill-wave lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 font-bold text-sm">ເງິນສົດ</span><i class="fa-solid fa-check text-idrive-green text-xs"></i></button>
+        <button onclick="selectPayMethod('wallet','iDrive Wallet','fa-wallet','text-emerald-400')" class="menu-row"><i class="fa-solid fa-wallet lead bg-emerald-500/15 text-emerald-400"></i><span class="flex-1 font-bold text-sm">iDrive Wallet</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+        <button onclick="openBCELFromWallet()" class="menu-row"><i class="fa-solid fa-qrcode lead bg-red-500/15 text-red-400"></i><span class="flex-1 font-bold text-sm">BCEL One QR</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      </div>
+    </div>
+    <div>
+      <h3 class="text-xs font-bold text-gray-300 mb-1">ທຸລະກຳລ່າສຸດ</h3>
+      <div id="wallet-tx-list" class="bg-idrive-card border border-idrive-border rounded-2xl px-4"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: PROFILE -->
+<section id="screen-profile" class="page-screen hidden">
+  <div class="page-header">
+    <h1 class="font-black text-lg flex-1">ໂປຣໄຟລ໌</h1>
+    <button onclick="openScreen('settings')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center text-gray-300"><i class="fa-solid fa-gear"></i></button>
+  </div>
+  <div class="px-4 py-5 space-y-4">
+    <div class="flex items-center gap-4">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-idrive-green to-emerald-400 p-0.5">
+        <div class="w-full h-full bg-idrive-card rounded-[14px] flex items-center justify-center text-2xl text-idrive-green"><i class="fa-solid fa-user"></i></div>
+      </div>
+      <div class="min-w-0">
+        <h2 data-user-name class="font-black text-base truncate">ຜູ້ໃຊ້</h2>
+        <p data-user-phone class="text-xs text-gray-400">+856</p>
+        <button onclick="openScreen('edit-profile')" class="text-[11px] text-idrive-green font-bold mt-1">ແກ້ໄຂໂປຣໄຟລ໌</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="bg-idrive-card border border-idrive-border rounded-2xl p-3 text-center"><p class="text-[9px] text-gray-500 font-bold">ທ່ຽວ</p><p id="profile-trips" class="font-black text-sm mt-1">0</p></div>
+      <div class="bg-idrive-card border border-idrive-border rounded-2xl p-3 text-center"><p class="text-[9px] text-gray-500 font-bold">ຄະແນນ</p><p id="profile-rating" class="font-black text-sm mt-1 text-yellow-400">4.96</p></div>
+      <div class="bg-idrive-card border border-idrive-border rounded-2xl p-3 text-center"><p class="text-[9px] text-gray-500 font-bold">ລາຍໄດ້</p><p id="profile-earn" class="font-black text-sm mt-1 text-idrive-green">0</p></div>
+    </div>
+    <div class="space-y-2">
+      <button onclick="promptInstallApp()" data-pwa-install class="menu-row"><i class="fa-solid fa-mobile-screen-button lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 text-left"><span class="font-bold text-sm block">ຕິດຕັ້ງແອັບ iDrive</span><span class="text-[10px] text-gray-500 font-bold">ເປີດໄວ · ແບບແອັບຈິງ</span></span><i class="fa-solid fa-download text-idrive-green text-xs"></i></button>
+      <div data-pwa-installed class="menu-row hidden"><i class="fa-solid fa-circle-check lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 font-bold text-sm text-idrive-green">ຕິດຕັ້ງແອັບແລ້ວ</span></div>
+      <button onclick="openScreen('notifications')" class="menu-row"><i class="fa-solid fa-bell lead bg-yellow-400/15 text-yellow-400"></i><span class="flex-1 font-bold text-sm">ການແຈ້ງເຕືອນ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openScreen('promo')" class="menu-row"><i class="fa-solid fa-gift lead bg-pink-500/15 text-pink-400"></i><span class="flex-1 font-bold text-sm">ໂປຣໂມຊັນ & ເຊີນໝູ່</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openScreen('help')" class="menu-row"><i class="fa-solid fa-circle-question lead bg-blue-400/15 text-blue-400"></i><span class="flex-1 font-bold text-sm">ຊ່ວຍເຫຼືອ & FAQ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openModal('sos-modal')" class="menu-row"><i class="fa-solid fa-shield-halved lead bg-red-500/15 text-red-400"></i><span class="flex-1 font-bold text-sm">ສູນຄວາມປອດໄພ SOS</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openDriverApply()" id="driver-apply-entry" class="menu-row"><i class="fa-solid fa-id-card lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 text-left"><span id="driver-apply-entry-label" class="font-bold text-sm block">ສະໝັກຂັບລົດກັບ iDrive</span><span id="driver-apply-badge" class="text-[10px] font-bold text-idrive-green">ໃໝ່</span></span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openScreen('settings')" class="menu-row"><i class="fa-solid fa-sliders lead bg-gray-500/20 text-gray-300"></i><span class="flex-1 font-bold text-sm">ຕັ້ງຄ່າ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="switchRole();goTab('home')" class="menu-row"><i class="fa-solid fa-car-side lead bg-yellow-400/15 text-yellow-400"></i><span class="flex-1 font-bold text-sm">ສະຫຼັບໂໝດຄົນຂັບ / ຜູ້ໂດຍສານ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+    </div>
+    <button onclick="logout()" class="w-full text-red-400 font-bold text-sm py-3 border border-red-500/30 rounded-2xl hover:bg-red-500/10">ອອກຈາກລະບົບ</button>
+  </div>
+</section>
+
+<!-- PAGE: NOTIFICATIONS -->
+<section id="screen-notifications" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button onclick="closeScreen('notifications')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ການແຈ້ງເຕືອນ</h1>
+    <button onclick="markAllNotifsRead()" class="text-[11px] text-idrive-green font-bold">ອ່ານທັງໝົດ</button>
+  </div>
+  <div id="notif-list" class="px-4 py-4 space-y-3"></div>
+</section>
+
+<!-- PAGE: HELP -->
+<section id="screen-help" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button onclick="closeScreen('help')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ຊ່ວຍເຫຼືອ</h1>
+  </div>
+  <div class="px-4 py-4 space-y-3 text-sm">
+    <details class="bg-idrive-card border border-idrive-border rounded-2xl p-4 group"><summary class="font-bold cursor-pointer list-none flex justify-between items-center">ຈະສະເໜີລາຄາແນວໃດ?<i class="fa-solid fa-chevron-down text-xs text-gray-500 group-open:rotate-180 transition"></i></summary><p class="text-xs text-gray-400 mt-3 leading-relaxed">ປ້ອນຈຸດຮັບ/ສົ່ງ → ເລືອກລົດ → ປັບລາຄາ ±5,000 ₭ → ປະກາດຮ້ອງລົດ ແລ້ວຕົກລົງກັບຄົນຂັບ.</p></details>
+    <details class="bg-idrive-card border border-idrive-border rounded-2xl p-4 group"><summary class="font-bold cursor-pointer list-none flex justify-between items-center">ຄົນຂັບຕໍ່ລາຄາໄດ້ບໍ?<i class="fa-solid fa-chevron-down text-xs text-gray-500 group-open:rotate-180 transition"></i></summary><p class="text-xs text-gray-400 mt-3 leading-relaxed">ໄດ້ — ຄົນຂັບສາມາດຮັບລາຄາ ຫຼື ຕໍ່ລາຄາ. ທ່ານສາມາດກົດ “ຕໍ່ +5k” ເພື່ອຕອບກັບ.</p></details>
+    <details class="bg-idrive-card border border-idrive-border rounded-2xl p-4 group"><summary class="font-bold cursor-pointer list-none flex justify-between items-center">ຊຳລະແນວໃດ?<i class="fa-solid fa-chevron-down text-xs text-gray-500 group-open:rotate-180 transition"></i></summary><p class="text-xs text-gray-400 mt-3 leading-relaxed">ເງິນສົດ, iDrive Wallet ຫຼື BCEL One QR. Wallet/BCEL ຈະຫັກຍອດເມື່ອທ່ຽວສຳເລັດ.</p></details>
+    <details class="bg-idrive-card border border-idrive-border rounded-2xl p-4 group"><summary class="font-bold cursor-pointer list-none flex justify-between items-center">ເມື່ອມີเหตุສຸກເສີນ?<i class="fa-solid fa-chevron-down text-xs text-gray-500 group-open:rotate-180 transition"></i></summary><p class="text-xs text-gray-400 mt-3 leading-relaxed">ເປີດເມນູ SOS → ໂທ 1191 ຫຼື ແຊຣ໌ Live Location GPS.</p></details>
+    <a href="tel:1191" class="menu-row mt-2"><i class="fa-solid fa-phone lead bg-red-500/15 text-red-400"></i><span class="flex-1 font-bold text-sm">ໂທສູນຊ່ວຍເຫຼືອ 1191</span></a>
+    <button onclick="toast('📧 support@idrive.la')" class="menu-row"><i class="fa-solid fa-envelope lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 font-bold text-sm">ອີເມວ support@idrive.la</span></button>
+  </div>
+</section>
+
+<!-- PAGE: PROMO -->
+<section id="screen-promo" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button onclick="closeScreen('promo')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ໂປຣໂມຊັນ</h1>
+  </div>
+  <div class="px-4 py-5 space-y-4">
+    <div class="rounded-3xl p-5 border border-idrive-green/30 bg-gradient-to-br from-idrive-green/20 to-transparent">
+      <p class="text-[10px] font-bold text-idrive-green uppercase tracking-wider">ລະຫັດເຊີນໝູ່</p>
+      <p class="text-3xl font-black tracking-widest mt-2">IDRIVE50</p>
+      <p class="text-xs text-gray-400 mt-2">ເຊີນໝູ່ຮັບ 50,000 ₭ ເມື່ອພວກເຂົາເດີນທາງຄັ້ງທຳອິດ</p>
+      <button onclick="copyPromo()" class="mt-4 w-full bg-idrive-green text-gray-950 font-black py-3 rounded-2xl text-sm">ຄັດລອກລະຫັດ</button>
+    </div>
+    <div class="bg-idrive-card border border-idrive-border rounded-2xl p-4">
+      <h3 class="font-bold text-sm">ໂບນັດເຕີມເງິນ</h3>
+      <p class="text-xs text-gray-400 mt-1">ເຕີມ Wallet ≥ 50,000 ₭ ຮັບໂບນັດ 5%</p>
+      <button onclick="goTab('wallet');closeScreen('promo')" class="mt-3 text-xs font-bold text-idrive-green">ໄປກະເປົ໋າ →</button>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: SETTINGS -->
+<section id="screen-settings" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button onclick="closeScreen('settings')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ຕັ້ງຄ່າ</h1>
+  </div>
+  <div class="px-4 py-4 space-y-3 text-sm">
+    <button type="button" onclick="promptInstallApp()" data-pwa-install class="menu-row text-left">
+      <i class="fa-solid fa-download lead bg-idrive-green/15 text-idrive-green"></i>
+      <span class="flex-1">
+        <span class="font-bold block">ຕິດຕັ້ງເປັນແອັບ</span>
+        <span id="pwa-install-status" class="text-[10px] text-gray-500 font-bold">ເພີ່ມໄປໜ້າຈໍຫຼັກ</span>
+      </span>
+      <i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>
+    </button>
+    <div class="menu-row"><span class="flex-1 font-bold">ພາສາ</span><button onclick="toggleLanguage()" class="font-bold text-idrive-green text-xs"><span id="lang-label">ລາວ</span> / EN</button></div>
+    <div class="menu-row"><span class="flex-1 font-bold">ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle()" id="map-style-label" class="font-bold text-idrive-green text-xs">Dark Mode</button></div>
+    <label class="menu-row cursor-pointer"><span class="flex-1 font-bold">ສຽງແຈ້ງເຕືອນ</span><div class="toggle-switch"><input id="set-sound" type="checkbox" checked onchange="saveSetting('sound',this.checked)"><span></span></div></label>
+    <label class="menu-row cursor-pointer"><span class="flex-1 font-bold">Push ການແຈ້ງເຕືອນ</span><div class="toggle-switch"><input id="set-notif" type="checkbox" checked onchange="saveSetting('notif',this.checked)"><span></span></div></label>
+    <div class="menu-row"><span class="flex-1 font-bold">ເວີຊັນ</span><span class="text-gray-500 text-xs font-mono">v8.1 UX</span></div>
+      <button onclick="renderOnboardingRestart()" class="menu-row text-left"><span class="flex-1 font-bold text-gray-300">ເບິ່ງ Onboarding ອີກ</span></button>
+  </div>
+</section>
+
+<!-- PAGE: EDIT PROFILE -->
+<section id="screen-edit-profile" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button onclick="closeScreen('edit-profile')" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ແກ້ໄຂໂປຣໄຟລ໌</h1>
+  </div>
+  <div class="px-4 py-5 space-y-4">
+    <div>
+      <label class="text-[10px] text-gray-500 font-bold uppercase">ຊື່</label>
+      <input id="edit-name" class="auth-input mt-1" type="text">
+    </div>
+    <div>
+      <label class="text-[10px] text-gray-500 font-bold uppercase">ເບີໂທ</label>
+      <input id="edit-phone" class="auth-input mt-1" type="tel" inputmode="numeric">
+    </div>
+    <button onclick="saveProfile()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">ບັນທຶກ</button>
+  </div>
+</section>
+
+<!-- PAGE: DRIVER APPLY -->
+<section id="screen-driver-apply" class="page-screen hidden z-[46]">
+  <div class="page-header">
+    <button type="button" onclick="driverApplyBack()" class="w-9 h-9 rounded-xl bg-idrive-accent flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+    <h1 class="font-black text-lg flex-1">ສະໝັກຂັບລົດ</h1>
+    <img src="./logo.svg" alt="" class="idrive-logo idrive-logo-sm" width="28" height="28">
+  </div>
+
+  <div id="da-progress" class="hidden px-4 pt-2">
+    <div class="flex items-center justify-between mb-1.5">
+      <span id="da-step-label" class="text-[10px] text-gray-400 font-bold">1/3</span>
+    </div>
+    <div class="h-1.5 rounded-full bg-idrive-accent overflow-hidden">
+      <div id="da-progress-bar" class="h-full bg-idrive-green rounded-full transition-all duration-300" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto px-4 py-4 pb-28">
+    <!-- INTRO -->
+    <div id="da-step-intro" class="da-step space-y-5">
+      <div class="da-hero">
+        <img src="./logo.svg" alt="iDrive" class="idrive-logo idrive-logo-lg" width="64" height="64">
+        <h2 class="text-xl font-black mt-4">ຂັບລົດກັບ iDrive</h2>
+        <p class="text-sm text-gray-400 mt-2 leading-relaxed">ສະໝັກເປັນຄົນຂັບ — ຮັບງານ, ຕໍ່ລາຄາ ແລະ ຮັບລາຍໄດ້ແບບ InDrive</p>
+      </div>
+      <div class="space-y-2.5">
+        <div class="da-perk"><i class="fa-solid fa-hand-holding-dollar"></i><div><p class="font-bold text-sm">ຕົກລົງລາຄາເອງ</p><p class="text-[11px] text-gray-400">ຮັບ ຫຼື ຕໍ່ລາຄາກັບຜູ້ໂດຍສານ</p></div></div>
+        <div class="da-perk"><i class="fa-solid fa-wallet"></i><div><p class="font-bold text-sm">ຮັບເງິນໄວ</p><p class="text-[11px] text-gray-400">ເງິນສົດ · Wallet · BCEL One</p></div></div>
+        <div class="da-perk"><i class="fa-solid fa-shield-halved"></i><div><p class="font-bold text-sm">ປອດໄພ</p><p class="text-[11px] text-gray-400">SOS ແລະ ຕິດຕາມທ່ຽວສົດ</p></div></div>
+      </div>
+      <ul class="text-[11px] text-gray-500 space-y-1.5 px-1">
+        <li>• ອາຍຸ 18+ ແລະ ມີໃບຂັບຂີ່ຖືກກົດໝາຍ</li>
+        <li>• ມີລົດສ່ວນຕົວ ຫຼື ລົດທີ່ໃຊ້ໄດ້</li>
+        <li>• ສະໝັກຟຣີ — ພ້ອມຮັບງານໄວ</li>
+      </ul>
+    </div>
+
+    <!-- PERSONAL -->
+    <div id="da-step-personal" class="da-step hidden space-y-3">
+      <h2 class="font-black text-base">ຂໍ້ມູນສ່ວນຕົວ</h2>
+      <p class="text-xs text-gray-400 -mt-1">ໃຊ້ສຳລັບຢືນຢັນບັນຊີຄົນຂັບ</p>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ຊື່-ນາມສະກຸນ</label>
+        <input id="da-name" class="auth-input mt-1" type="text" placeholder="ຊື່ຕາມບັດປະຈຳຕົວ">
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເບີໂທ</label>
+        <div class="phone-field mt-1">
+          <span class="phone-prefix">+856</span>
+          <input id="da-phone" class="auth-input" type="tel" inputmode="numeric" placeholder="20 XXXX XXXX">
+        </div>
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເມືອງປະຈຳການ</label>
+        <select id="da-city" class="auth-input mt-1">
+          <option value="ວຽງຈັນ">ນະຄອນຫຼວງວຽງຈັນ</option>
+          <option value="ຫຼວງພະບາງ">ຫຼວງພະບາງ</option>
+          <option value="ປາກເຊ">ປາກເຊ</option>
+          <option value="ສະຫວັນນະເຂດ">ສະຫວັນນະເຂດ</option>
+          <option value="ຄຳມ່ວນ">ຄຳມ່ວນ</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເລກບັດປະຈຳຕົວ (ທາງເລືອກ)</label>
+        <input id="da-id" class="auth-input mt-1" type="text" placeholder="ຕົວຢ່າງ 1-XXXX-XXXX-XX">
+      </div>
+    </div>
+
+    <!-- VEHICLE -->
+    <div id="da-step-vehicle" class="da-step hidden space-y-3">
+      <h2 class="font-black text-base">ຂໍ້ມູນລົດ</h2>
+      <p class="text-xs text-gray-400 -mt-1">ລົດທີ່ຈະໃຊ້ຮັບຜູ້ໂດຍສານ</p>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ປະເພດລົດ</label>
+        <div class="grid grid-cols-2 gap-2 mt-1.5">
+          <label class="da-veh-opt"><input type="radio" name="da-type-radio" value="ride" checked onchange="document.getElementById('da-type').value=this.value"><i class="fa-solid fa-car text-idrive-green"></i><span>ລົດເກັງ</span></label>
+          <label class="da-veh-opt"><input type="radio" name="da-type-radio" value="moto" onchange="document.getElementById('da-type').value=this.value"><i class="fa-solid fa-motorcycle text-yellow-400"></i><span>ມໍໄຊ</span></label>
+          <label class="da-veh-opt"><input type="radio" name="da-type-radio" value="comfort" onchange="document.getElementById('da-type').value=this.value"><i class="fa-solid fa-car-side text-blue-400"></i><span>ຄອມຟອດ</span></label>
+          <label class="da-veh-opt"><input type="radio" name="da-type-radio" value="suv" onchange="document.getElementById('da-type').value=this.value"><i class="fa-solid fa-truck-pickup text-purple-400"></i><span>SUV</span></label>
+        </div>
+        <input type="hidden" id="da-type" value="ride">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-[10px] text-gray-500 font-bold uppercase">ຍີ່ຫໍ້</label>
+          <input id="da-brand" class="auth-input mt-1" type="text" placeholder="Toyota">
+        </div>
+        <div>
+          <label class="text-[10px] text-gray-500 font-bold uppercase">ລຸ້ນ</label>
+          <input id="da-model" class="auth-input mt-1" type="text" placeholder="Vios">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-[10px] text-gray-500 font-bold uppercase">ສີ</label>
+          <input id="da-color" class="auth-input mt-1" type="text" placeholder="ຂາວ">
+        </div>
+        <div>
+          <label class="text-[10px] text-gray-500 font-bold uppercase">ປີ</label>
+          <input id="da-year" class="auth-input mt-1" type="number" inputmode="numeric" placeholder="2019">
+        </div>
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເລກທະບຽນ</label>
+        <input id="da-plate" class="auth-input mt-1" type="text" placeholder="ກກ 1234">
+      </div>
+    </div>
+
+    <!-- DOCS -->
+    <div id="da-step-docs" class="da-step hidden space-y-3">
+      <h2 class="font-black text-base">ເອກະສານ</h2>
+      <p class="text-xs text-gray-400 -mt-1">ຢືນຢັນເອກະສານທີ່ມີ (ເດໂມ)</p>
+      <label class="da-doc-row">
+        <input id="da-doc-license" type="checkbox" class="da-check">
+        <div class="flex-1"><p class="font-bold text-sm">ໃບຂັບຂີ່</p><p class="text-[11px] text-gray-400">ຍັງບໍ່ໝົດອາຍຸ</p></div>
+        <i class="fa-solid fa-id-card text-idrive-green"></i>
+      </label>
+      <label class="da-doc-row">
+        <input id="da-doc-reg" type="checkbox" class="da-check">
+        <div class="flex-1"><p class="font-bold text-sm">ທະບຽນລົດ / ປຶ້ມສີຂຽວ</p><p class="text-[11px] text-gray-400">ຊື່ກົງກັບເຈົ້າຂອງລົດ</p></div>
+        <i class="fa-solid fa-file-lines text-blue-400"></i>
+      </label>
+      <label class="da-doc-row">
+        <input id="da-doc-photo" type="checkbox" class="da-check">
+        <div class="flex-1"><p class="font-bold text-sm">ຮູບລົດ (ທາງເລືອກ)</p><p class="text-[11px] text-gray-400">ຮູບໜ້າ / ຂ້າງລົດ</p></div>
+        <i class="fa-solid fa-camera text-yellow-400"></i>
+      </label>
+      <p class="text-[10px] text-gray-500 leading-relaxed px-1">ໃນໂໝດເດໂມ ລະບົບຈະອະນຸມັດອັດຕະໂນມັດຫຼັງສົ່ງຄຳຂໍ.</p>
+    </div>
+
+    <!-- DONE -->
+    <div id="da-step-done" class="da-step hidden space-y-5 text-center pt-4">
+      <div class="w-20 h-20 rounded-full bg-idrive-green/15 border border-idrive-green/40 mx-auto flex items-center justify-center">
+        <i class="fa-solid fa-circle-check text-idrive-green text-4xl"></i>
+      </div>
+      <div>
+        <h2 class="font-black text-xl">ສະໝັກສຳເລັດ!</h2>
+        <p id="da-status-text" class="text-sm text-idrive-green font-bold mt-2">ບັນຊີຄົນຂັບຖືກອະນຸມັດແລ້ວ</p>
+        <p id="da-done-car" class="text-xs text-gray-400 mt-2">—</p>
+      </div>
+      <div class="da-perk text-left">
+        <i class="fa-solid fa-car-side"></i>
+        <div>
+          <p class="font-bold text-sm">ພ້ອມຮັບງານ</p>
+          <p class="text-[11px] text-gray-400">ເປີດໂໝດຄົນຂັບ ແລ້ວຮັບຄຳຂໍໃກ້ທ່ານ</p>
+        </div>
+      </div>
+      <button type="button" onclick="startDriveAfterApply()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">
+        ເລີ່ມຂັບລົດ
+      </button>
+      <button type="button" onclick="closeScreen('driver-apply')" class="w-full text-xs text-gray-400 font-bold py-2">ກັບໜ້າໂປຣໄຟລ໌</button>
+    </div>
+  </div>
+
+  <div id="da-footer" class="da-footer">
+    <button type="button" id="da-back-btn" onclick="driverApplyBack()" class="da-btn-ghost">ປິດ</button>
+    <button type="button" id="da-next-btn" onclick="driverApplyNext()" class="da-btn-primary">ເລີ່ມສະໝັກ</button>
+  </div>
+</section>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav" class="bottom-nav">
+  <button class="nav-item nav-active text-idrive-green" data-tab="home" onclick="goTab('home')"><i class="fa-solid fa-map-location-dot"></i><span>ໜ້າຫຼັກ</span></button>
+  <button class="nav-item text-gray-500" data-tab="activity" onclick="goTab('activity')"><i class="fa-solid fa-clock-rotate-left"></i><span>ກິດຈະກຳ</span></button>
+  <button class="nav-item text-gray-500" data-tab="wallet" onclick="goTab('wallet')"><i class="fa-solid fa-wallet"></i><span>ກະເປົ໋າ</span></button>
+  <button class="nav-item text-gray-500" data-tab="profile" onclick="goTab('profile')"><i class="fa-solid fa-user"></i><span>ໂປຣໄຟລ໌</span></button>
+</nav>
+
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="rating-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm rounded-[28px] p-6 border border-idrive-border text-center space-y-4 shadow-2xl slide-up">
+    <div class="w-16 h-16 rounded-full bg-idrive-green/20 text-idrive-green mx-auto flex items-center justify-center text-4xl border border-idrive-green/40 glow-green-sm"><i class="fa-solid fa-circle-check"></i></div>
+    <div><h3 class="font-black text-xl">ເດີນທາງສຳເລັດ! 🎉</h3><p class="text-xs text-gray-400 mt-1">ໃຫ້ຄະແນນຄົນຂັບ</p></div>
+    <div id="rating-stars" class="flex justify-center gap-3 text-3xl text-yellow-400"><i class="fa-solid fa-star cursor-pointer hover:scale-125 transition" onclick="setRating(1)"></i><i class="fa-solid fa-star cursor-pointer hover:scale-125 transition" onclick="setRating(2)"></i><i class="fa-solid fa-star cursor-pointer hover:scale-125 transition" onclick="setRating(3)"></i><i class="fa-solid fa-star cursor-pointer hover:scale-125 transition" onclick="setRating(4)"></i><i class="fa-solid fa-star cursor-pointer hover:scale-125 transition" onclick="setRating(5)"></i></div>
+    <textarea id="review-input" placeholder="ຂຽນຄວາມຄິດເຫັນ..." rows="2" class="w-full bg-idrive-dark border border-idrive-border rounded-2xl p-3 text-xs text-white focus:outline-none resize-none focus:border-idrive-green"></textarea>
+    <button onclick="submitReview()" class="w-full bg-idrive-green text-gray-950 font-black py-3.5 rounded-2xl text-sm hover:bg-idrive-darkgreen transition shadow-lg glow-green">ສົ່ງຄຳຕິຊົມ ✓</button>
+  </div>
+</div>
+
+<div id="chat-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm h-[500px] rounded-[28px] border border-idrive-border flex flex-col overflow-hidden shadow-2xl slide-up">
+    <div class="p-4 bg-idrive-accent border-b border-idrive-border flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-idrive-green text-gray-950 flex items-center justify-center font-black"><i class="fa-solid fa-user-ninja text-sm"></i></div>
+        <div><h4 id="chat-peer-name" class="font-bold text-sm">ຄົນຂັບ iDrive</h4><span class="text-[10px] text-idrive-green font-bold">🟢 ອອນໄລນ໌</span></div>
+      </div>
+      <button onclick="closeModal('chat-modal')" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-3 text-xs"><div class="bg-idrive-dark p-3 rounded-2xl max-w-[80%] text-gray-300 border border-idrive-border">ສະບາຍດີ! ກຳລັງໄປຮັບ. 🚗</div></div>
+    <div class="p-3 bg-idrive-dark border-t border-idrive-border space-y-2">
+      <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+        <button onclick="quickChat('ຂ້ອຍຖ້າຢູ່ຕໍ່ໜ້າ')" class="text-[10px] bg-idrive-accent text-gray-300 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-idrive-hover">ຖ້າຢູ່ຕໍ່ໜ້າ</button>
+        <button onclick="quickChat('ໃກ້ຮອດຫຼືຍັງ?')" class="text-[10px] bg-idrive-accent text-gray-300 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-idrive-hover">ໃກ້ຮອດ?</button>
+        <button onclick="quickChat('ກຳລັງລົງ')" class="text-[10px] bg-idrive-accent text-gray-300 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-idrive-hover">ກຳລັງລົງ</button>
+      </div>
+      <div class="flex gap-2">
+        <input id="chat-input" type="text" placeholder="ພິມຂໍ້ຄວາມ..." class="flex-1 bg-idrive-card border border-idrive-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-idrive-green" onkeydown="if(event.key==='Enter')sendChat()">
+        <button onclick="sendChat()" class="bg-idrive-green text-gray-950 px-4 rounded-xl font-bold hover:bg-idrive-darkgreen"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="wallet-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm rounded-[28px] p-5 border border-idrive-border space-y-4 shadow-2xl slide-up">
+    <div class="flex items-center justify-between pb-2 border-b border-idrive-border">
+      <h3 class="font-bold text-base"><i class="fa-solid fa-wallet text-idrive-green mr-2"></i>ກະເປົ໋າເງິນ</h3>
+      <button onclick="closeModal('wallet-modal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="bg-gradient-to-br from-emerald-600 to-teal-900 p-4 rounded-2xl text-white shadow-xl border border-emerald-400/20">
+      <div class="flex justify-between items-center mb-1"><span class="text-[10px] opacity-80 font-bold uppercase tracking-wider">iDrive Digital Pay</span><i class="fa-solid fa-bolt text-idrive-green"></i></div>
+      <h2 id="wallet-balance" class="text-2xl font-black">350,000 LAK</h2>
+      <div class="flex justify-between items-center pt-2 text-[10px] opacity-80"><span>Account: 20-5588-9900</span><button onclick="topUpWallet(50000)" class="bg-black/30 px-2.5 py-0.5 rounded-full font-bold hover:bg-black/50">+ ເຕີມ 50k</button></div>
+    </div>
+    <div class="space-y-2 text-xs">
+      <label class="text-gray-400 font-bold block">ເລືອກວິທີຊໍາລະ:</label>
+      <div onclick="setPayment('cash','ເງິນສົດ','fa-money-bill-wave','text-idrive-green')" class="p-3 bg-idrive-dark border border-idrive-green rounded-2xl flex items-center justify-between cursor-pointer">
+        <div class="flex items-center gap-3"><i class="fa-solid fa-money-bill-wave text-idrive-green text-lg"></i><span class="font-bold">ເງິນສົດ (Cash)</span></div>
+        <i class="fa-solid fa-circle-check text-idrive-green"></i>
+      </div>
+      <div onclick="setPayment('wallet','iDrive Wallet','fa-wallet','text-emerald-400')" class="p-3 bg-idrive-dark border border-idrive-border hover:border-idrive-green rounded-2xl flex items-center justify-between cursor-pointer transition">
+        <div class="flex items-center gap-3"><i class="fa-solid fa-wallet text-emerald-400 text-lg"></i><span class="font-bold">iDrive Wallet</span></div>
+        <span class="text-[10px] text-gray-400">ຫັກຍອດອັตໂນ</span>
+      </div>
+      <div onclick="showQR()" class="p-3 bg-idrive-dark border border-idrive-border hover:border-idrive-green rounded-2xl flex items-center justify-between cursor-pointer transition">
+        <div class="flex items-center gap-3"><i class="fa-solid fa-qrcode text-red-500 text-lg"></i><span class="font-bold">BCEL One QR Pay</span></div>
+        <span class="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-md font-bold">ຍອດນິຍົມ</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="bcel-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+  <div class="bg-white text-gray-900 w-full max-w-xs rounded-[28px] p-6 text-center space-y-4 shadow-2xl relative slide-up">
+    <button onclick="closeModal('bcel-modal')" class="absolute top-4 right-4 text-gray-500 hover:text-black"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <div class="flex items-center justify-center gap-2"><span class="text-red-600 font-black text-xl">BCEL One</span><span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">QR Pay</span></div>
+    <div class="text-sm text-gray-500">ຈຳນວນ: <span id="qr-amount" class="font-black text-red-600 text-lg">30,000 LAK</span></div>
+    <div class="w-48 h-48 mx-auto bg-gray-100 p-3 rounded-2xl border-2 border-red-500 flex items-center justify-center shadow-inner">
+      <svg viewBox="0 0 100 100" class="w-full h-full" fill="none">
+        <rect width="100" height="100" fill="white"/>
+        <path d="M10 10H40V40H10V10ZM15 15V35H35V15H15Z" fill="#111827"/><path d="M20 20H30V30H20V20Z" fill="#DC2626"/>
+        <path d="M60 10H90V40H60V10ZM65 15V35H85V15H65Z" fill="#111827"/><path d="M70 20H80V30H70V20Z" fill="#DC2626"/>
+        <path d="M10 60H40V90H10V60ZM15 65V85H35V65H15Z" fill="#111827"/><path d="M20 70H30V80H20V70Z" fill="#DC2626"/>
+        <rect x="50" y="50" width="10" height="10" fill="#111827"/><rect x="70" y="50" width="20" height="10" fill="#111827"/>
+        <rect x="50" y="70" width="20" height="20" fill="#111827"/><rect x="80" y="80" width="10" height="10" fill="#111827"/>
+      </svg>
+    </div>
+    <p class="text-xs font-bold text-gray-500">ສະແກນ BCEL One App</p>
+    <button onclick="confirmQR()" class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-2xl text-sm transition shadow-lg">ຢືນຢັນໃຊ້ BCEL One ✓</button>
+  </div>
+</div>
+
+<div id="history-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm rounded-[28px] p-5 border border-idrive-border space-y-4 max-h-[80vh] flex flex-col shadow-2xl slide-up">
+    <div class="flex items-center justify-between pb-2 border-b border-idrive-border"><h3 class="font-bold text-base"><i class="fa-solid fa-clock-rotate-left text-idrive-green mr-2"></i>ປະຫວັດການເດີນທາງ</h3><button onclick="closeModal('history-modal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    <div id="history-list" class="flex-1 overflow-y-auto space-y-3 text-xs"></div>
+  </div>
+</div>
+
+<div id="sos-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm rounded-[28px] p-6 border border-red-500/50 space-y-4 text-center shadow-2xl slide-up">
+    <div class="w-16 h-16 rounded-full bg-red-500/20 text-red-500 mx-auto flex items-center justify-center text-3xl border border-red-500"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div><h3 class="font-black text-xl">ສູນຄວາມປອດໄພ SOS</h3><p class="text-xs text-gray-400 mt-1">ຕິດຕໍ່ສຸກເສີນ</p></div>
+    <button onclick="callPolice()" class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-2xl text-sm transition shadow-lg"><i class="fa-solid fa-phone mr-2"></i>ໂທ 1191 ຕຳຫຼວດ</button>
+    <button onclick="shareLiveLocation()" class="w-full bg-idrive-accent text-white font-bold py-3.5 rounded-2xl text-sm border border-idrive-border hover:bg-idrive-hover transition"><i class="fa-solid fa-share-nodes mr-2"></i>ແຊຣ໌ Live Location (GPS)</button>
+    <button onclick="closeModal('sos-modal')" class="text-xs text-gray-400 hover:text-white">ຍົກເລີກ</button>
+  </div>
+</div>
+
+<div id="settings-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+  <div class="bg-idrive-card w-full max-w-sm rounded-[28px] p-5 border border-idrive-border space-y-4 shadow-2xl slide-up">
+    <div class="flex items-center justify-between pb-2 border-b border-idrive-border"><h3 class="font-bold text-base"><i class="fa-solid fa-gear text-idrive-green mr-2"></i>ຕັ້ງຄ່າ iDrive</h3><button onclick="closeModal('settings-modal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    <div class="space-y-3 text-xs">
+      <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>ພາສາ</span><button onclick="toggleLanguage();closeModal('settings-modal')" class="font-bold text-idrive-green">ລາວ / EN</button></div>
+      <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle();closeModal('settings-modal')" id="map-style-label" class="font-bold text-idrive-green">Dark Mode</button></div>
+      <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>Version</span><span class="text-gray-400 font-mono">v8.1 UX Complete</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="call-modal" class="hidden fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
+  <div class="w-full max-w-xs text-center space-y-6 slide-up">
+    <div class="w-24 h-24 rounded-full bg-idrive-green/20 border-2 border-idrive-green mx-auto flex items-center justify-center text-4xl text-idrive-green glow-green"><i class="fa-solid fa-phone"></i></div>
+    <div>
+      <h3 id="call-name" class="font-black text-xl">ຄົນຂັບ</h3>
+      <p id="call-status" class="text-sm text-gray-400 mt-1">ກຳລັງໂທ...</p>
+      <p id="call-timer" class="text-2xl font-black text-idrive-green mt-3 font-mono">00:00</p>
+    </div>
+    <button onclick="endCall()" class="w-16 h-16 rounded-full bg-red-600 text-white text-2xl mx-auto flex items-center justify-center shadow-xl hover:bg-red-700 transition"><i class="fa-solid fa-phone-slash"></i></button>
+  </div>
+</div>
+
+<div id="pwa-install-sheet" class="pwa-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
+  <div id="pwa-install-backdrop" class="pwa-sheet-backdrop"></div>
+  <div class="pwa-sheet-panel pwa-popup">
+    <div class="pwa-urgent-badge"><i class="fa-solid fa-bolt"></i> ສຳຄັນ</div>
+    <div class="pwa-sheet-hero pwa-popup-hero">
+      <img src="./icons/icon-192.png" alt="iDrive" class="pwa-sheet-icon" width="72" height="72">
+      <div class="pwa-sheet-copy">
+        <p class="pwa-sheet-kicker">ຕິດຕັ້ງເພື່ອໃຊ້ງານດີທີ່ສຸດ</p>
+        <h3 id="pwa-install-title">ເພີ່ມ iDrive ໃສ່ໂທລະສັບ</h3>
+        <p class="pwa-sheet-sub">ໃຊ້ແບບແອັບຈິງ · ເປີດໄວຈາກໜ້າຈໍຫຼັກ · ບໍ່ຕ້ອງ App Store</p>
+      </div>
+    </div>
+
+    <div id="pwa-android-body" class="pwa-sheet-benefits">
+      <div class="pwa-benefit"><i class="fa-solid fa-bolt"></i><span>ເປີດແອັບໄດ້ທັນທີ</span></div>
+      <div class="pwa-benefit"><i class="fa-solid fa-expand"></i><span>ເຕັມຈໍ ໄຮ້ແຖບໂປຣແກຣມທ່ອງເວັບ</span></div>
+      <div class="pwa-benefit"><i class="fa-solid fa-shield-halved"></i><span>ປະສົບການປອດໄພ · ຄືແອັບຈິງ</span></div>
+    </div>
+
+    <div id="pwa-ios-steps" class="pwa-ios-steps hidden">
+      <p class="pwa-ios-title">ຕິດຕັ້ງໃນ iPhone / iPad</p>
+      <ol>
+        <li><span class="pwa-step-num">1</span><span>ກົດປຸ່ມ <i class="fa-solid fa-arrow-up-from-bracket"></i> <b>Share</b> ລຸ່ມສຸດ</span></li>
+        <li><span class="pwa-step-num">2</span><span>ເລືອກ <b>Add to Home Screen</b></span></li>
+        <li><span class="pwa-step-num">3</span><span>ກົດ <b>Add</b> — ແລ້ວເປີດໄອຄອນ iDrive</span></li>
+      </ol>
+    </div>
+
+    <div class="pwa-sheet-actions">
+      <button type="button" id="pwa-install-cta" class="pwa-cta" data-mode="install">ຕິດຕັ້ງດຽວນີ້</button>
+      <button type="button" id="pwa-install-later" class="pwa-later">ໄວ້ກ່ອນ</button>
+    </div>
+  </div>
+</div>
+
+<div id="pwa-mini-tip" class="pwa-mini-tip hidden" role="status">
+  <img src="./icons/icon-192.png" alt="" width="36" height="36">
+  <div class="flex-1 min-w-0">
+    <p class="font-black text-xs">ຕິດຕັ້ງ iDrive ໃສ່ໂທລະສັບ</p>
+    <p class="text-[10px] text-gray-400 font-bold truncate">ໃຊ້ແບບແອັບຈິງ · ກົດເພື່ອເບິ່ງວິທີ</p>
+  </div>
+  <button type="button" onclick="promptInstallApp()" class="pwa-mini-btn">ຕິດຕັ້ງ</button>
+  <button type="button" onclick="hidePwaMiniTip()" class="pwa-mini-close" aria-label="ປິດ"><i class="fa-solid fa-xmark"></i></button>
+</div>
+
+<div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-[999] bg-idrive-card border border-idrive-green text-white px-5 py-3 rounded-full text-xs font-black shadow-2xl flex items-center gap-2.5 transform -translate-y-24 opacity-0 pointer-events-none">
+  <i class="fa-solid fa-circle-info text-idrive-green text-base"></i>
+  <span id="toast-msg">...</span>
+</div>
+
+</body>
+</html>
