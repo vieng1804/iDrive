@@ -188,20 +188,20 @@
     <div class="space-y-3">
       <div>
         <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ຊື່</label>
-        <input id="auth-name" class="auth-input mt-1" type="text" placeholder="ຊື່ຂອງທ່ານ" value="ທ່ານ ສົມພອນ ແກ້ວມະນີ">
+        <input id="auth-name" class="auth-input mt-1" type="text" placeholder="ຊື່ຂອງທ່ານ" autocomplete="name">
       </div>
       <div>
         <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ເບີໂທ</label>
           <div class="phone-field mt-1">
             <span class="phone-prefix">+856</span>
-            <input id="auth-phone" class="auth-input" type="tel" inputmode="numeric" placeholder="20 XXXX XXXX" value="2055889900">
+            <input id="auth-phone" class="auth-input" type="tel" inputmode="numeric" placeholder="20 XXXX XXXX" autocomplete="tel">
           </div>
       </div>
       <div id="auth-otp-box" class="hidden">
-        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ລະຫັດ OTP</label>
-        <input id="auth-otp" class="auth-input mt-1 tracking-[0.4em] text-center text-lg" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ລະຫັດ</label>
+        <input id="auth-otp" class="auth-input mt-1 tracking-[0.4em] text-center text-lg" type="tel" inputmode="numeric" maxlength="6" placeholder="••••">
       </div>
-      <p id="auth-hint" class="text-[11px] text-gray-500 text-center">ກົດສົ່ງ OTP ເພື່ອຢືນຢັນເບີ</p>
+      <p id="auth-hint" class="text-[11px] text-gray-500 text-center">ກົດສືບຕໍ່ເພື່ອເຂົ້າລະບົບ</p>
     </div>
     <button id="auth-login-btn" onclick="submitLogin()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">ສົ່ງ OTP</button>
     <p class="text-[10px] text-center text-gray-600">ເຂົ້າສູ່ລະບົບແມ່ນຍອມຮັບເງື່ອນໄຂການໃຊ້ງານ iDrive</p>
@@ -209,7 +209,7 @@
 </div>
 
 
-  <div id="app-shell" class="hidden flex flex-col h-full min-h-0">
+  <div id="app-shell" class="hidden flex flex-col h-full min-h-0 role-passenger">
 
   <!-- HEADER -->
   <header id="app-header" class="app-header">
@@ -221,7 +221,10 @@
         <img src="/logo.svg" alt="" class="idrive-logo idrive-logo-sm app-brand-mark" width="28" height="28">
         <div class="app-brand-text">
           <span class="app-brand-name">iDrive</span>
-          <span id="role-badge" class="app-brand-role">ຜູ້ໂດຍສານ</span>
+          <span class="app-brand-meta">
+            <span id="role-badge" class="app-brand-role">ຜູ້ໂດຍສານ</span>
+            <span id="live-pill" class="live-pill is-demo">DEMO</span>
+          </span>
         </div>
       </div>
     </div>
@@ -262,11 +265,12 @@
           <button onclick="openModal('sos-modal');toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-red-400 transition"><i class="fa-solid fa-shield-halved w-5 text-lg text-red-500"></i><span>ສູນຄວາມປອດໄພ SOS</span></button>
           <button onclick="openDriverApply();toggleSidebar(false)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-id-card w-5 text-lg text-idrive-green"></i><span>ສະໝັກຂັບລົດ</span></button>
           <button onclick="openScreen('settings')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-gray-300 hover:text-white transition"><i class="fa-solid fa-gear w-5 text-lg text-gray-400"></i><span>ຕັ້ງຄ່າແອັບ</span></button>
+          <button id="admin-entry" onclick="openAdmin()" class="hidden w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-idrive-accent text-yellow-300 transition"><i class="fa-solid fa-gauge-high w-5 text-lg text-yellow-400"></i><span>Admin / Monitor</span></button>
         </nav>
       </div>
       <div class="pt-4 border-t border-idrive-border">
         <button onclick="logout()" class="w-full text-left flex items-center gap-3 text-red-400 hover:text-red-300 text-sm py-2 font-medium"><i class="fa-solid fa-right-from-bracket"></i><span>ອອກຈາກລະບົບ</span></button>
-        <p class="text-[10px] text-gray-500 mt-2 font-mono">iDrive Lao Pro v8.1 • UX Complete</p>
+        <p class="text-[10px] text-gray-500 mt-2 font-mono">iDrive Lao Pro v8.2 • Live ops</p>
       </div>
     </div>
     <div class="flex-1" onclick="toggleSidebar(false)"></div>
@@ -337,6 +341,13 @@
       <div id="map-pick-hint" class="map-pick-hint-bar">
         <span id="map-pick-hint-text">ແຕະແຜນທີ່ເພື່ອຕັ້ງຕົ້ນທາງ</span>
       </div>
+      <button type="button" id="fleet-chip" class="fleet-chip" onclick="fitOnlineDrivers()">
+        <span class="fleet-chip-ico"><i class="fa-solid fa-car-side"></i></span>
+        <span class="fleet-chip-copy">
+          <b id="fleet-count">0</b>
+          <small id="fleet-label">ຄົນຂັບອອນລາຍ</small>
+        </span>
+      </button>
     </div>
 
     <div id="map-crosshair" class="map-crosshair pointer-events-none crosshair-dest" aria-hidden="true">
@@ -426,38 +437,39 @@
               </div>
             </div>
             <div class="grid grid-cols-4 gap-1.5">
-              <button onclick="selectVehicle('ride',30000)" id="v-ride" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-accent border-2 border-idrive-green text-center flex flex-col items-center gap-0.5 transition glow-green-sm">
+              <button onclick="selectVehicle('ride',85000)" id="v-ride" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-accent border-2 border-idrive-green text-center flex flex-col items-center gap-0.5 transition glow-green-sm">
                 <i class="fa-solid fa-car text-idrive-green text-base"></i>
                 <span class="text-[9px] font-bold">ເກັງ</span>
-                <span id="price-ride" class="text-[8px] text-gray-400">30,000 ₭</span>
+                <span id="price-ride" class="text-[8px] text-gray-400">85,000 ₭</span>
               </button>
-              <button onclick="selectVehicle('moto',15000)" id="v-moto" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+              <button onclick="selectVehicle('moto',50000)" id="v-moto" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
                 <i class="fa-solid fa-motorcycle text-yellow-400 text-base"></i>
                 <span class="text-[9px] font-bold">ມໍໄຊ</span>
-                <span id="price-moto" class="text-[8px] text-gray-400">15,000 ₭</span>
+                <span id="price-moto" class="text-[8px] text-gray-400">50,000 ₭</span>
               </button>
-              <button onclick="selectVehicle('comfort',50000)" id="v-comfort" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+              <button onclick="selectVehicle('comfort',105000)" id="v-comfort" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
                 <i class="fa-solid fa-car-side text-blue-400 text-base"></i>
                 <span class="text-[9px] font-bold">ຄອມຟອດ</span>
-                <span id="price-comfort" class="text-[8px] text-gray-400">50,000 ₭</span>
+                <span id="price-comfort" class="text-[8px] text-gray-400">105,000 ₭</span>
               </button>
-              <button onclick="selectVehicle('suv',65000)" id="v-suv" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
+              <button onclick="selectVehicle('suv',120000)" id="v-suv" class="veh-btn veh-btn-sm p-1.5 rounded-xl bg-idrive-dark border border-idrive-border text-center flex flex-col items-center gap-0.5 transition hover:border-gray-600">
                 <i class="fa-solid fa-truck-pickup text-purple-400 text-base"></i>
                 <span class="text-[9px] font-bold">SUV</span>
-                <span id="price-suv" class="text-[8px] text-gray-400">65,000 ₭</span>
+                <span id="price-suv" class="text-[8px] text-gray-400">120,000 ₭</span>
               </button>
             </div>
 
             <div class="bg-idrive-dark p-2.5 rounded-xl border border-idrive-border mt-2.5">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[11px] font-extrabold flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar text-idrive-green"></i>ສະເໜີລາຄາ</span>
-                <span id="suggested-label" class="text-[10px] text-idrive-green font-bold">ແນະນຳ: 30,000 ₭</span>
+                <span id="suggested-label" class="text-[10px] text-idrive-green font-bold">ແນະນຳຂັ້ນຕ່ຳ: 85,000 ₭</span>
               </div>
+              <p id="fare-hint" class="text-[9px] text-gray-500 mb-1.5">ສະເໜີຕາມນີ້ ຫຼືສູງກວ່າ — ຄົນຂັບຮັບ ຫຼືຕໍ່ລາຄາໄດ້</p>
               <div class="flex items-center gap-2">
                 <button onclick="adjFare(-5000)" class="w-9 h-9 bg-idrive-accent rounded-lg text-lg font-black border border-idrive-border">−</button>
                 <div class="flex-1 text-center">
                   <div class="flex items-center justify-center gap-1">
-                    <input type="number" id="fare-input" value="30000" step="5000" class="w-24 bg-transparent text-center font-black text-xl text-idrive-green focus:outline-none">
+                    <input type="number" id="fare-input" value="85000" step="5000" class="w-24 bg-transparent text-center font-black text-xl text-idrive-green focus:outline-none">
                     <span class="text-xs text-gray-400 font-extrabold">₭</span>
                   </div>
                 </div>
@@ -481,101 +493,111 @@
       </div>
 
       <!-- STEP 2: SEARCHING -->
-      <div id="searching-view" class="hidden px-4 pb-4 space-y-4">
-        <div class="text-center py-3">
-          <div class="w-20 h-20 rounded-full bg-idrive-green/20 border-2 border-idrive-green mx-auto flex items-center justify-center relative shadow-xl">
-            <i class="fa-solid fa-car-side text-idrive-green text-3xl animate-float"></i>
-            <div class="absolute inset-0 rounded-full border-2 border-idrive-green radar-pulse"></div>
+      <div id="searching-view" class="hidden">
+        <div class="search-scroll">
+          <div class="text-center py-2">
+            <div class="w-16 h-16 rounded-full bg-idrive-green/20 border-2 border-idrive-green mx-auto flex items-center justify-center relative shadow-xl">
+              <i class="fa-solid fa-car-side text-idrive-green text-2xl animate-float"></i>
+              <div class="absolute inset-0 rounded-full border-2 border-idrive-green radar-pulse"></div>
+            </div>
+            <h3 class="font-extrabold text-sm mt-2.5">ກຳລັງຮັບຂໍ້ສະເໜີຈາກຄົນຂັບ...</h3>
+            <p class="text-xs text-gray-400 mt-1">ລາຄາທີ່ທ່ານສະເໜີ: <span id="offered-price-txt" class="text-idrive-green font-extrabold text-sm">30,000 ₭</span></p>
+            <p class="text-[10px] text-gray-500 mt-0.5">ແບບ InDrive — ຕົກລົງ ຫຼື ຕໍ່ລາຄາກັບຄົນຂັບ</p>
           </div>
-          <h3 class="font-extrabold text-base mt-3">ກຳລັງຮັບຂໍ້ສະເໜີຈາກຄົນຂັບ...</h3>
-          <p class="text-xs text-gray-400 mt-1">ລາຄາທີ່ທ່ານສະເໜີ: <span id="offered-price-txt" class="text-idrive-green font-extrabold text-sm">30,000 ₭</span></p>
-          <p class="text-[10px] text-gray-500 mt-1">ແບບ InDrive — ຕົກລົງ ຫຼື ຕໍ່ລາຄາກັບຄົນຂັບ</p>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-gray-200">ຂໍ້ສະເໜີ (<span id="bid-count">0</span>):</span>
-            <span class="text-[10px] text-idrive-green font-semibold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-idrive-green animate-ping inline-block"></span>Live</span>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-gray-200">ຂໍ້ສະເໜີ (<span id="bid-count">0</span>):</span>
+              <span class="text-[10px] text-idrive-green font-semibold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-idrive-green animate-ping inline-block"></span>Live</span>
+            </div>
+            <div id="bids-container" class="space-y-2.5"></div>
           </div>
-          <div id="bids-container" class="space-y-2.5 max-h-56 overflow-y-auto pr-1"></div>
         </div>
-        <p class="text-[10px] text-center text-gray-500">ຫຼືສະຫຼັບໄປ <button onclick="switchRole()" class="text-idrive-green font-bold underline">ໂໝດຄົນຂັບ</button> ເພື່ອຮັບງານດ້ວຍຕົນເອງ</p>
-        <button onclick="cancelRequest()" class="w-full bg-idrive-accent hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-3 rounded-2xl text-xs transition">ຍົກເລີກ (Cancel)</button>
+        <div class="search-cta">
+          <p class="text-[10px] text-center text-gray-500 mb-2">ຫຼືສະຫຼັບໄປ <button type="button" onclick="switchRole()" class="text-idrive-green font-bold underline">ໂໝດຄົນຂັບ</button> ເພື່ອຮັບງານດ້ວຍຕົນເອງ</p>
+          <button type="button" onclick="cancelRequest()" class="w-full bg-idrive-accent hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-3 rounded-2xl text-xs transition">ຍົກເລີກ (Cancel)</button>
+        </div>
       </div>
 
       <!-- STEP 3: ACTIVE TRIP -->
-      <div id="trip-view" class="hidden px-4 pb-4 space-y-3">
-        <div class="bg-idrive-green/10 border border-idrive-green/40 p-3.5 rounded-2xl flex items-center justify-between shadow-md">
-          <div class="flex items-center gap-2.5">
-            <span class="relative flex h-3 w-3"><span class="animate-ping absolute inset-0 rounded-full bg-idrive-green opacity-75"></span><span class="relative rounded-full h-3 w-3 bg-idrive-green"></span></span>
-            <div>
-              <span id="trip-status" class="text-xs font-black text-idrive-green block">ຄົນຂັບກຳລັງເດີນທາງ...</span>
-              <span id="trip-sub" class="text-[10px] text-gray-400">ຖ້າຢູ່ຈຸດຮັບ</span>
+      <div id="trip-view" class="hidden">
+        <div class="trip-scroll">
+          <div class="trip-status-card">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="relative flex h-2.5 w-2.5 shrink-0"><span class="animate-ping absolute inset-0 rounded-full bg-idrive-green opacity-75"></span><span class="relative rounded-full h-2.5 w-2.5 bg-idrive-green"></span></span>
+              <div class="min-w-0">
+                <span id="trip-status" class="text-xs font-black text-idrive-green block truncate">ຄົນຂັບກຳລັງເດີນທາງ...</span>
+                <span id="trip-sub" class="text-[10px] text-gray-400">ຖ້າຢູ່ຈຸດຮັບ</span>
+              </div>
+            </div>
+            <span id="eta-badge" class="text-[11px] bg-idrive-dark text-white px-2.5 py-1 rounded-full font-black border border-idrive-border shrink-0">⏱ —</span>
+          </div>
+          <div class="trip-driver-card">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-12 h-12 rounded-xl bg-gray-800 overflow-hidden border-2 border-idrive-green shrink-0">
+                <img id="trip-driver-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80" class="w-full h-full object-cover" alt="">
+              </div>
+              <div class="min-w-0">
+                <h4 id="trip-driver-name" class="font-extrabold text-sm truncate">ທ່ານ ສົມໄຊ</h4>
+                <p id="trip-driver-car" class="text-[11px] text-idrive-green font-bold truncate">Toyota Vios</p>
+                <div class="flex items-center text-[11px] text-yellow-400 gap-1"><i class="fa-solid fa-star"></i><span class="font-bold text-white" id="trip-driver-rating">4.92</span></div>
+              </div>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <button type="button" onclick="openModal('chat-modal')" class="w-10 h-10 bg-idrive-accent text-idrive-green rounded-xl flex items-center justify-center border border-idrive-border hover:bg-gray-700 transition active:scale-95" aria-label="ຂໍ້ຄວາມ"><i class="fa-solid fa-comment-dots"></i></button>
+              <button type="button" onclick="startCall()" class="w-10 h-10 bg-idrive-green text-gray-950 rounded-xl flex items-center justify-center font-bold hover:bg-idrive-darkgreen transition active:scale-95 glow-green-sm" aria-label="ໂທ"><i class="fa-solid fa-phone"></i></button>
             </div>
           </div>
-          <span id="eta-badge" class="text-xs bg-idrive-dark text-white px-3 py-1.5 rounded-full font-black border border-idrive-border">⏱ —</span>
-        </div>
-        <div class="bg-idrive-dark p-4 rounded-2xl border border-idrive-border flex items-center justify-between shadow-lg">
-          <div class="flex items-center gap-3.5">
-            <div class="w-14 h-14 rounded-2xl bg-gray-800 overflow-hidden border-2 border-idrive-green shrink-0 shadow">
-              <img id="trip-driver-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
-            </div>
-            <div>
-              <h4 id="trip-driver-name" class="font-extrabold text-sm">ທ່ານ ສົມໄຊ</h4>
-              <p id="trip-driver-car" class="text-xs text-idrive-green font-bold">Toyota Vios</p>
-              <div class="flex items-center text-xs text-yellow-400 gap-1 mt-1"><i class="fa-solid fa-star"></i><span class="font-bold text-white" id="trip-driver-rating">4.92</span></div>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="openModal('chat-modal')" class="w-11 h-11 bg-idrive-accent text-idrive-green rounded-2xl flex items-center justify-center border border-idrive-border hover:bg-gray-700 transition active:scale-95 shadow"><i class="fa-solid fa-comment-dots text-xl"></i></button>
-            <button onclick="startCall()" class="w-11 h-11 bg-idrive-green text-gray-950 rounded-2xl flex items-center justify-center font-bold hover:bg-idrive-darkgreen transition active:scale-95 shadow glow-green-sm"><i class="fa-solid fa-phone text-lg"></i></button>
+          <div class="trip-fare-card">
+            <div class="flex justify-between"><span class="text-gray-400">ລາຄາຕົກລົງ:</span><span id="trip-price" class="font-black text-idrive-green text-sm">30,000 ₭</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">ໄລຍະທາງ:</span><span id="trip-distance" class="text-gray-200 font-bold">— ກມ</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">ວິທີຊຳລະ:</span><span id="trip-payment" class="text-gray-200 font-bold">ເງິນສົດ</span></div>
           </div>
         </div>
-        <div class="bg-idrive-dark p-3 rounded-xl border border-idrive-border text-xs space-y-1.5">
-          <div class="flex justify-between"><span class="text-gray-400">ລາຄາຕົກລົງ:</span><span id="trip-price" class="font-black text-idrive-green text-sm">30,000 ₭</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">ໄລຍະທາງ:</span><span id="trip-distance" class="text-gray-200 font-bold">— ກມ</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">ວິທີຊໍາລະ:</span><span id="trip-payment" class="text-gray-200 font-bold">ເງິນສົດ</span></div>
+        <div class="trip-cta">
+          <button id="complete-trip-btn" type="button" onclick="completeTrip()" class="trip-complete-btn" disabled>ລໍຖ້າຮອດຈຸດໝາຍ...</button>
         </div>
-        <button id="complete-trip-btn" onclick="completeTrip()" class="w-full bg-idrive-accent hover:bg-idrive-green hover:text-gray-950 text-idrive-green font-black py-3 rounded-2xl text-xs border border-idrive-green transition opacity-50 pointer-events-none">ລໍຖ້າຮອດຈຸດໝາຍ...</button>
       </div>
       </div><!-- /sheet-body -->
     </div><!-- /passenger-sheet -->
 
-    <!-- DRIVER PANEL -->
-    <div id="driver-panel" class="hidden absolute left-0 right-0 z-20 glass rounded-t-[28px] border-t border-idrive-border shadow-2xl max-h-[86vh] overflow-y-auto">
-      <div class="w-12 h-1.5 bg-gray-600 rounded-full mx-auto my-3 opacity-60"></div>
-      <div class="px-4 pb-4 space-y-3">
-        <div class="flex items-center justify-between pb-3 border-b border-idrive-border">
-          <div>
-            <h3 class="font-black text-base">ໂໝດຄົນຂັບ (Driver Mode)</h3>
-            <p id="driver-status-txt" class="text-xs text-idrive-green font-bold">🟢 ພ້ອມຮັບງານ</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="driver-online" checked onchange="toggleDriverOnline()" class="sr-only peer">
-            <div class="w-12 h-6 bg-gray-700 rounded-full peer peer-checked:bg-idrive-green after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-          </label>
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ລາຍໄດ້</span><span id="driver-earn" class="text-sm font-black text-idrive-green">0 ₭</span></div>
-          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ທ່ຽວ</span><span id="driver-trips" class="text-sm font-black text-white">0</span></div>
-          <div class="bg-idrive-dark p-3 rounded-2xl border border-idrive-border text-center shadow"><span class="text-[9px] text-gray-400 font-bold block uppercase">ຄະແນນ</span><span id="driver-rating-stat" class="text-sm font-black text-yellow-400">4.95 ★</span></div>
-        </div>
-        <div id="driver-active" class="hidden"></div>
-        <button type="button" onclick="openDriverApply()" class="w-full text-left da-perk !py-3">
-          <i class="fa-solid fa-id-card"></i>
-          <div class="min-w-0 flex-1">
-            <p class="font-bold text-sm">ຂໍ້ມູນຄົນຂັບ</p>
-            <p class="text-[11px] text-gray-400 truncate">ເບິ່ງ / ແກ້ໄຂການສະໝັກ</p>
-          </div>
-          <i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>
+    <!-- DRIVER PANEL (inDrive-style map workspace) -->
+    <div id="driver-panel" class="drv-shell hidden">
+      <div class="drv-top">
+        <button type="button" class="drv-pill drv-earn-pill" onclick="goTab('wallet')" title="ລາຍໄດ້ມື້ນີ້">
+          <span>ມື້ນີ້</span>
+          <b id="driver-earn">0 ₭</b>
         </button>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-gray-200">ງານໃກ້ທ່ານ (<span id="driver-job-count">0</span>):</span>
-            <button onclick="renderDriverFeed()" class="text-xs text-idrive-green flex items-center gap-1 font-bold hover:underline"><i class="fa-solid fa-rotate-right"></i>ອັບເດດ</button>
+        <div class="drv-pill drv-meta-pill">
+          <span id="driver-trips">0</span> ທ່ຽວ
+          <i></i>
+          <span id="driver-rating-stat">4.95 ★</span>
+        </div>
+        <button type="button" class="drv-icon-btn" onclick="recenterMap()" title="ໂຟກັສ">
+          <i class="fa-solid fa-crosshairs"></i>
+        </button>
+        <button type="button" class="drv-icon-btn" onclick="toggleMapStyle()" title="ຊັ້ນແຜນທີ່">
+          <i class="fa-solid fa-layer-group"></i>
+        </button>
+        <button type="button" class="drv-icon-btn" onclick="openDriverApply()" title="ໂປຣໄຟລ໌ຄົນຂັບ">
+          <i class="fa-solid fa-id-card"></i>
+        </button>
+      </div>
+
+      <div class="drv-bottom">
+        <div id="driver-active" class="drv-trip hidden"></div>
+        <div id="driver-feed" class="drv-feed"></div>
+        <div id="drv-dock" class="drv-dock">
+          <input type="checkbox" id="driver-online" class="sr-only" onchange="toggleDriverOnline()">
+          <div class="drv-dock-copy">
+            <p id="driver-status-txt"><span class="drv-radar"></span>ພ້ອມຮັບງານ</p>
+            <small id="drv-dock-sub">ກຳລັງຊອກຫາຜູ້ໂດຍສານໃກ້ທ່ານ</small>
           </div>
-          <div id="driver-feed" class="space-y-3 max-h-72 overflow-y-auto"></div>
+          <button type="button" id="drv-go-btn" class="drv-go-btn" onclick="document.getElementById('driver-online').click()">
+            <span id="drv-go-label">ປິດຮັບງານ</span>
+          </button>
         </div>
       </div>
+      <span id="driver-job-count" class="hidden">0</span>
     </div>
   </main>
   </div>
@@ -652,6 +674,7 @@
       <button onclick="openModal('sos-modal')" class="menu-row"><i class="fa-solid fa-shield-halved lead bg-red-500/15 text-red-400"></i><span class="flex-1 font-bold text-sm">ສູນຄວາມປອດໄພ SOS</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
       <button onclick="openDriverApply()" id="driver-apply-entry" class="menu-row"><i class="fa-solid fa-id-card lead bg-idrive-green/15 text-idrive-green"></i><span class="flex-1 text-left"><span id="driver-apply-entry-label" class="font-bold text-sm block">ສະໝັກຂັບລົດກັບ iDrive</span><span id="driver-apply-badge" class="text-[10px] font-bold text-idrive-green">ໃໝ່</span></span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
       <button onclick="openScreen('settings')" class="menu-row"><i class="fa-solid fa-sliders lead bg-gray-500/20 text-gray-300"></i><span class="flex-1 font-bold text-sm">ຕັ້ງຄ່າ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
+      <button onclick="openAdmin()" id="admin-entry-profile" class="menu-row hidden"><i class="fa-solid fa-gauge-high lead bg-yellow-400/15 text-yellow-400"></i><span class="flex-1 font-bold text-sm">Admin / Monitor</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
       <button onclick="switchRole();goTab('home')" class="menu-row"><i class="fa-solid fa-car-side lead bg-yellow-400/15 text-yellow-400"></i><span class="flex-1 font-bold text-sm">ສະຫຼັບໂໝດຄົນຂັບ / ຜູ້ໂດຍສານ</span><i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i></button>
     </div>
     <button onclick="logout()" class="w-full text-red-400 font-bold text-sm py-3 border border-red-500/30 rounded-2xl hover:bg-red-500/10">ອອກຈາກລະບົບ</button>
@@ -721,10 +744,11 @@
       <i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>
     </button>
     <div class="menu-row"><span class="flex-1 font-bold">ພາສາ</span><button onclick="toggleLanguage()" class="font-bold text-idrive-green text-xs"><span id="lang-label">ລາວ</span> / EN</button></div>
-    <div class="menu-row"><span class="flex-1 font-bold">ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle()" id="map-style-label" class="font-bold text-idrive-green text-xs">Dark Mode</button></div>
+    <div class="menu-row"><span class="flex-1 font-bold">ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle()" id="map-style-label" class="font-bold text-idrive-green text-xs">Satellite</button></div>
     <label class="menu-row cursor-pointer"><span class="flex-1 font-bold">ສຽງແຈ້ງເຕືອນ</span><div class="toggle-switch"><input id="set-sound" type="checkbox" checked onchange="saveSetting('sound',this.checked)"><span></span></div></label>
     <label class="menu-row cursor-pointer"><span class="flex-1 font-bold">Push ການແຈ້ງເຕືອນ</span><div class="toggle-switch"><input id="set-notif" type="checkbox" checked onchange="saveSetting('notif',this.checked)"><span></span></div></label>
-    <div class="menu-row"><span class="flex-1 font-bold">ເວີຊັນ</span><span class="text-gray-500 text-xs font-mono">v8.1 UX</span></div>
+    <div class="menu-row"><span class="flex-1 font-bold">ເວີຊັນ</span><span class="text-gray-500 text-xs font-mono">v8.2 Live</span></div>
+    <p id="live-settings-note" class="text-[11px] text-gray-500 px-1">LIVE = ລູກຄ້າ ແລະ ຄົນຂັບຄົນລະເຄື່ອງ. DEMO = ທົດສອບໃນເຄື່ອງດຽວ.</p>
       <button onclick="renderOnboardingRestart()" class="menu-row text-left"><span class="flex-1 font-bold text-gray-300">ເບິ່ງ Onboarding ອີກ</span></button>
   </div>
 </section>
@@ -780,8 +804,8 @@
       </div>
       <ul class="text-[11px] text-gray-500 space-y-1.5 px-1">
         <li>• ອາຍຸ 18+ ແລະ ມີໃບຂັບຂີ່ຖືກກົດໝາຍ</li>
-        <li>• ມີລົດສ່ວນຕົວ ຫຼື ລົດທີ່ໃຊ້ໄດ້</li>
-        <li>• ສະໝັກຟຣີ — ພ້ອມຮັບງານໄວ</li>
+        <li>• ບັດປະຈຳຕົວ ຫຼື ພາສປອດ, ເອກະສານລົດ ແລະ ຮູບຄູ່ລົດ</li>
+        <li>• ສະໝັກຟຣີ — ອະນຸມັດຫຼັງກວດເອກະສານ</li>
       </ul>
     </div>
 
@@ -811,8 +835,19 @@
         </select>
       </div>
       <div>
-        <label class="text-[10px] text-gray-500 font-bold uppercase">ເລກບັດປະຈຳຕົວ (ທາງເລືອກ)</label>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ປະເພດເອກະສານຕົວຕົນ</label>
+        <select id="da-id-type" class="auth-input mt-1">
+          <option value="idcard">ບັດປະຈຳຕົວ</option>
+          <option value="passport">ພາສປອດ</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເລກບັດ / ພາສປອດ</label>
         <input id="da-id" class="auth-input mt-1" type="text" placeholder="ຕົວຢ່າງ 1-XXXX-XXXX-XX">
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-500 font-bold uppercase">ເລກໃບຂັບຂີ່</label>
+        <input id="da-license-no" class="auth-input mt-1" type="text" placeholder="ເລກໃບຂັບຂີ່">
       </div>
     </div>
 
@@ -858,24 +893,15 @@
 
     <!-- DOCS -->
     <div id="da-step-docs" class="da-step hidden space-y-3">
-      <h2 class="font-black text-base">ເອກະສານ</h2>
-      <p class="text-xs text-gray-400 -mt-1">ຢືນຢັນເອກະສານທີ່ມີ (ເດໂມ)</p>
-      <label class="da-doc-row">
-        <input id="da-doc-license" type="checkbox" class="da-check">
-        <div class="flex-1"><p class="font-bold text-sm">ໃບຂັບຂີ່</p><p class="text-[11px] text-gray-400">ຍັງບໍ່ໝົດອາຍຸ</p></div>
-        <i class="fa-solid fa-id-card text-idrive-green"></i>
-      </label>
-      <label class="da-doc-row">
-        <input id="da-doc-reg" type="checkbox" class="da-check">
-        <div class="flex-1"><p class="font-bold text-sm">ທະບຽນລົດ / ປຶ້ມສີຂຽວ</p><p class="text-[11px] text-gray-400">ຊື່ກົງກັບເຈົ້າຂອງລົດ</p></div>
-        <i class="fa-solid fa-file-lines text-blue-400"></i>
-      </label>
-      <label class="da-doc-row">
-        <input id="da-doc-photo" type="checkbox" class="da-check">
-        <div class="flex-1"><p class="font-bold text-sm">ຮູບລົດ (ທາງເລືອກ)</p><p class="text-[11px] text-gray-400">ຮູບໜ້າ / ຂ້າງລົດ</p></div>
-        <i class="fa-solid fa-camera text-yellow-400"></i>
-      </label>
-      <p class="text-[10px] text-gray-500 leading-relaxed px-1">ໃນໂໝດເດໂມ ລະບົບຈະອະນຸມັດອັດຕະໂນມັດຫຼັງສົ່ງຄຳຂໍ.</p>
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="font-black text-base">ເອກະສານ KYC</h2>
+          <p class="text-xs text-gray-400 mt-0.5">ອັບຮູບຊັດ ໃສ່ແສງພຽງພໍ — ບໍ່ຕັດມຸມເອກະສານ</p>
+        </div>
+        <span id="da-kyc-count" class="text-[11px] font-black text-idrive-green whitespace-nowrap">0/0</span>
+      </div>
+      <div id="da-kyc-list" class="space-y-4"></div>
+      <p class="text-[10px] text-gray-500 leading-relaxed px-1">ຮູບຈະຖືກບີບອັດກ່ອນສົ່ງ. ແອັດມິນຕ້ອງເຫັນໃບໜ້າ, ເອກະສານ ແລະ ລົດຊັດເຈນຈຶ່ງອະນຸມັດໄດ້.</p>
     </div>
 
     <!-- DONE -->
@@ -895,9 +921,10 @@
           <p class="text-[11px] text-gray-400">ເປີດໂໝດຄົນຂັບ ແລ້ວຮັບຄຳຂໍໃກ້ທ່ານ</p>
         </div>
       </div>
-      <button type="button" onclick="startDriveAfterApply()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">
+      <button type="button" id="da-start-drive" onclick="startDriveAfterApply()" class="w-full bg-idrive-green text-gray-950 font-black py-4 rounded-2xl text-sm glow-green">
         ເລີ່ມຂັບລົດ
       </button>
+      <button type="button" onclick="driverApplyEditDocs()" class="w-full text-xs text-idrive-green font-bold py-2">ແກ້ / ເພີ່ມເອກະສານ</button>
       <button type="button" onclick="closeScreen('driver-apply')" class="w-full text-xs text-gray-400 font-bold py-2">ກັບໜ້າໂປຣໄຟລ໌</button>
     </div>
   </div>
@@ -1026,7 +1053,7 @@
     <div class="flex items-center justify-between pb-2 border-b border-idrive-border"><h3 class="font-bold text-base"><i class="fa-solid fa-gear text-idrive-green mr-2"></i>ຕັ້ງຄ່າ iDrive</h3><button onclick="closeModal('settings-modal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button></div>
     <div class="space-y-3 text-xs">
       <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>ພາສາ</span><button onclick="toggleLanguage();closeModal('settings-modal')" class="font-bold text-idrive-green">ລາວ / EN</button></div>
-      <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle();closeModal('settings-modal')" id="map-style-label" class="font-bold text-idrive-green">Dark Mode</button></div>
+      <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>ສີແຜ່ນທີ່</span><button onclick="toggleMapStyle();closeModal('settings-modal')" id="map-style-label" class="font-bold text-idrive-green">Satellite</button></div>
       <div class="flex justify-between items-center p-3 bg-idrive-dark rounded-xl border border-idrive-border"><span>Version</span><span class="text-gray-400 font-mono">v8.1 UX Complete</span></div>
     </div>
   </div>

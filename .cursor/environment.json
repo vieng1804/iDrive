@@ -1,17 +1,21 @@
 {
   "install": "npm ci",
-  "start": "npm run dev -- --host 0.0.0.0 --port 5173",
+  "start": "npm run live",
   "terminals": [
     {
-      "name": "Vite",
-      "command": "npm run dev -- --host 0.0.0.0 --port 5173",
-      "description": "iDrive Lao Pro frontend. Keep this server running so the team can preview the app."
+      "name": "Live ops",
+      "command": "npm run live",
+      "description": "iDrive live API (8787) + Vite preview (5180). Do not use 5173 — that port is 7Up."
     }
   ],
   "ports": [
     {
       "name": "web",
-      "port": 5173
+      "port": 5180
+    },
+    {
+      "name": "api",
+      "port": 8787
     }
   ]
 }

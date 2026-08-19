@@ -16,13 +16,26 @@ function navOffset() {
   return 64;
 }
 
+function actionSheetKind() {
+  const trip = document.getElementById('trip-view');
+  const search = document.getElementById('searching-view');
+  if (trip && !trip.classList.contains('hidden')) return 'trip';
+  if (search && !search.classList.contains('hidden')) return 'search';
+  return null;
+}
+
+function sheetMaxH() {
+  return Math.min(Math.round(window.innerHeight * 0.62), 540);
+}
+
 function snapHeights() {
-  // Keep map readable; ride sheet can go a bit taller to show all controls
+  // Keep map readable; action sheets stay tall enough for the primary CTA
   const vh = window.innerHeight;
+  const action = actionSheetKind();
   return {
-    peek: 72,
-    mid: Math.min(Math.round(vh * 0.38), 320),
-    full: Math.min(Math.round(vh * 0.56), 480)
+    peek: action ? 228 : 72,
+    mid: action ? Math.min(Math.round(vh * 0.48), 420) : Math.min(Math.round(vh * 0.38), 320),
+    full: sheetMaxH()
   };
 }
 
@@ -52,14 +65,15 @@ function syncExpandedUI() {
   const panel = document.getElementById('map-search-panel');
   const toolsFloat = document.querySelector('.map-tools-float');
   const chromeDefault = document.querySelector('.map-chrome-default');
-  const expanded = snap === 'peek';
+  const peek = snap === 'peek';
+  const searchPeek = peek && !actionSheetKind();
 
-  main?.classList.toggle('map-expanded', expanded);
-  panel?.classList.toggle('hidden', !expanded);
-  toolsFloat?.classList.toggle('hidden', !expanded);
-  chromeDefault?.classList.toggle('hidden', expanded);
+  main?.classList.toggle('map-expanded', peek);
+  panel?.classList.toggle('hidden', !searchPeek);
+  toolsFloat?.classList.toggle('hidden', !searchPeek);
+  chromeDefault?.classList.toggle('hidden', peek);
 
-  if (expanded) {
+  if (searchPeek) {
     syncMapSearchTargetUI();
     const inp = document.getElementById('map-search-input');
     if (inp) {
@@ -88,6 +102,7 @@ export function setSheetHeight(px, { animate = true, maxPx } = {}) {
 }
 
 export function setSheetSnap(next, { remember = true } = {}) {
+  if (ST.role === 'driver') return;
   if (!SNAPS.includes(next)) next = 'mid';
   if (remember && snap !== 'peek') prevSnap = snap;
   snap = next;
@@ -95,44 +110,60 @@ export function setSheetSnap(next, { remember = true } = {}) {
   sheetEl.dataset.snap = snap;
   sheetEl.classList.remove('sheet-dragging');
   setSheetHeight(heightFor(snap), { animate: true });
-  sheetEl.classList.toggle('sheet-peek', snap === 'peek');
+  const action = actionSheetKind();
+  sheetEl.classList.toggle('sheet-peek', snap === 'peek' && !action);
+  sheetEl.classList.toggle('sheet-compact', snap === 'peek' && !!action);
   syncFab();
   syncExpandedUI();
   invalidateMap();
 }
 
-/** Size sheet so ride controls (vehicle + fare + note + CTA) fit without dragging */
-export function sizeSheetForRide() {
-  if (!sheetEl) return;
+function sizeSheetToContent(contentEl, { minH = 340, pad = 14 } = {}) {
+  if (!sheetEl || ST.role === 'driver') return;
   snap = 'full';
   prevSnap = 'full';
   sheetEl.dataset.snap = 'full';
-  sheetEl.classList.remove('sheet-peek');
+  sheetEl.classList.remove('sheet-peek', 'sheet-compact');
 
-  const maxH = Math.min(Math.round(window.innerHeight * 0.58), 500);
-  // Open tall first so content can measure its natural height
+  const maxH = sheetMaxH();
   setSheetHeight(maxH, { animate: false, maxPx: maxH });
 
   requestAnimationFrame(() => {
-    const ride = document.getElementById('ride-step');
-    const handle = document.getElementById('sheet-handle');
-    if (!ride || ride.classList.contains('hidden')) {
+    if (!contentEl || contentEl.classList.contains('hidden')) {
       setSheetSnap('full', { remember: false });
       return;
     }
-    const scroll = ride.querySelector('.ride-scroll');
+    const handle = document.getElementById('sheet-handle');
+    const scroll = contentEl.querySelector('.ride-scroll, .trip-scroll, .search-scroll');
+    const cta = contentEl.querySelector('.ride-cta, .trip-cta, .search-cta');
     if (scroll) scroll.scrollTop = 0;
 
     const needed =
       (handle?.getBoundingClientRect().height || 36) +
-      ride.scrollHeight +
-      12;
-    const h = Math.min(Math.max(needed, 360), maxH);
+      (scroll ? scroll.scrollHeight : contentEl.scrollHeight) +
+      (cta?.offsetHeight || 0) +
+      pad;
+    const h = Math.min(Math.max(needed, minH), maxH);
     setSheetHeight(h, { animate: true, maxPx: maxH });
     syncFab();
     syncExpandedUI();
     invalidateMap();
   });
+}
+
+/** Size sheet so ride controls (vehicle + fare + note + CTA) fit without dragging */
+export function sizeSheetForRide() {
+  sizeSheetToContent(document.getElementById('ride-step'), { minH: 360 });
+}
+
+/** Size sheet so trip status + driver + fare + complete CTA stay above the nav */
+export function sizeSheetForTrip() {
+  sizeSheetToContent(document.getElementById('trip-view'), { minH: 348 });
+}
+
+/** Size sheet so bid list can scroll while cancel stays tappable */
+export function sizeSheetForSearch() {
+  sizeSheetToContent(document.getElementById('searching-view'), { minH: 360 });
 }
 
 export function toggleMapExpand() {
@@ -158,6 +189,7 @@ export function restoreSheet() {
 }
 
 function onPointerDown(e) {
+  if (ST.role === 'driver') return;
   if (!sheetEl || sheetEl.classList.contains('hidden')) return;
   if (!e.target.closest('#sheet-handle')) return;
   dragging = true;
@@ -192,6 +224,25 @@ function onPointerUp(e) {
 }
 
 function onResize() {
+  if (snap === 'peek') {
+    setSheetHeight(heightFor(snap), { animate: false });
+    invalidateMap();
+    return;
+  }
+  const kind = actionSheetKind();
+  if (kind === 'trip') {
+    sizeSheetForTrip();
+    return;
+  }
+  if (kind === 'search') {
+    sizeSheetForSearch();
+    return;
+  }
+  const ride = document.getElementById('ride-step');
+  if (ride && !ride.classList.contains('hidden')) {
+    sizeSheetForRide();
+    return;
+  }
   setSheetHeight(heightFor(snap), { animate: false });
   invalidateMap();
 }

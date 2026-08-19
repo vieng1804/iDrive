@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iDrive Control — Operations Console</title>
+  <meta name="theme-color" content="#07110c">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+Lao+Looped:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="./admin.css">
+  <script>window.__IDRIVE_SESSION_KEY = 'idrive_admin_session_v1';</script>
+</head>
+<body>
+  <div id="login-view" class="login-shell">
+    <div class="login-card">
+      <div class="login-brand">
+        <img src="/logo.svg" alt="iDrive" width="48" height="48">
+        <div>
+          <p class="kicker">iDrive Control</p>
+          <h1>Operations Console</h1>
+        </div>
+      </div>
+      <p class="login-copy">ລະບົບຈັດການ ແລະຕິດຕາມການເດີນທາງສົດ — ສຳລັບຜູ້ດູແລເທົ່ານັ້ນ</p>
+      <label>ເບີໂທ
+        <input id="login-phone" type="tel" inputmode="numeric" placeholder="2000000000" autocomplete="username">
+      </label>
+      <label>ລະຫັດ PIN
+        <input id="login-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="current-password">
+      </label>
+      <p id="login-error" class="login-error" hidden></p>
+      <button id="login-btn" type="button">ເຂົ້າສູ່ລະບົບ</button>
+      <p class="login-hint">ບັນຊີແອັດມິນ: 2000000000 · PIN 1804</p>
+    </div>
+  </div>
+
+  <div id="app-view" class="ops hidden">
+    <aside class="ops-nav">
+      <div class="ops-logo">
+        <img src="/logo.svg" alt="" width="32" height="32">
+        <div>
+          <strong>iDrive Control</strong>
+          <span>Lao operations</span>
+        </div>
+      </div>
+      <nav>
+        <button data-view="overview" class="is-on"><i class="fa-solid fa-chart-line"></i> ພາບລວມ</button>
+        <button data-view="live"><i class="fa-solid fa-map-location-dot"></i> ແຜນທີ່ສົດ</button>
+        <button data-view="trips"><i class="fa-solid fa-route"></i> ທ່ຽວທັງໝົດ</button>
+        <button data-view="drivers"><i class="fa-solid fa-id-card"></i> ຄົນຂັບ / KYC</button>
+        <button data-view="users"><i class="fa-solid fa-users"></i> ຜູ້ໃຊ້</button>
+        <button data-view="activity"><i class="fa-solid fa-clock-rotate-left"></i> ກິດຈະກຳ</button>
+      </nav>
+      <div class="ops-nav-foot">
+        <a href="../" target="_blank" rel="noreferrer">ເປີດແອັບລູກຄ້າ</a>
+        <button id="logout-btn" type="button">ອອກຈາກລະບົບ</button>
+      </div>
+    </aside>
+
+    <main class="ops-main">
+      <header class="ops-top">
+        <div>
+          <h2 id="view-title">ພາບລວມ</h2>
+          <p id="view-sub">ຕິດຕາມການເດີນທາງ ແລະອະນຸມັດຄົນຂັບແບບສົດ</p>
+        </div>
+        <div class="ops-top-right">
+          <span id="conn-pill" class="pill">ກຳລັງເຊື່ອມ</span>
+          <span id="clock" class="clock"></span>
+          <button type="button" id="refresh-btn" class="icon-btn" title="ຣີເຟຣຊ"><i class="fa-solid fa-rotate"></i></button>
+          <div id="who" class="who"></div>
+        </div>
+      </header>
+
+      <section id="view-overview" class="view">
+        <div class="ov-hero">
+          <div>
+            <p class="ov-pulse"><span class="pulse-dot"></span> ສູນຄວບຄຸມການເດີນທາງສົດ</p>
+            <h3>ພາບລວມການດຳເນີນງານ iDrive</h3>
+            <p class="ov-hero-copy">ລາຍຮັບ · ທ່ຽວສົດ · ຄົນຂັບ · KYC — ອັບເດດອັດຕະໂນມັດເມື່ອມີເຫດການ</p>
+          </div>
+          <div class="ov-hero-stats">
+            <div>
+              <span>ລາຍຮັບທັງໝົດ</span>
+              <b id="kpi-revenue">0 ₭</b>
+            </div>
+            <div>
+              <span>ທ່ຽວ 7 ມື້</span>
+              <b id="kpi-week">0</b>
+            </div>
+            <div>
+              <span>ອັບເດດ</span>
+              <b id="ov-updated">—</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-coins"></i><span>ລາຍຮັບມື້ນີ້</span></div>
+            <b id="kpi-today-rev">0 ₭</b>
+            <small id="kpi-today-rev-sub">ທຽບກັບມື້ວານ</small>
+          </article>
+          <article class="kpi live">
+            <div class="kpi-top"><i class="fa-solid fa-route"></i><span>ທ່ຽວສົດ</span></div>
+            <b id="kpi-live">0</b>
+            <small>ກຳລັງເດີນທາງ</small>
+          </article>
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-bullhorn"></i><span>ງານເປີດ</span></div>
+            <b id="kpi-open">0</b>
+            <small id="kpi-open-sub">ລໍຖ້າຄົນຂັບ</small>
+          </article>
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-car-side"></i><span>ຄົນຂັບອອນລາຍ</span></div>
+            <b id="kpi-online">0</b>
+            <small id="kpi-online-sub">ຈາກທັງໝົດ 0</small>
+          </article>
+          <article class="kpi warn">
+            <div class="kpi-top"><i class="fa-solid fa-id-card"></i><span>ລໍຖ້າ KYC</span></div>
+            <b id="kpi-pending">0</b>
+            <small>ຕ້ອງອະນຸມັດ</small>
+          </article>
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-circle-check"></i><span>ສຳເລັດມື້ນີ້</span></div>
+            <b id="kpi-today">0</b>
+            <small id="kpi-today-sub">ອັດຕາສຳເລັດ —</small>
+          </article>
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-tag"></i><span>ລາຄາສະເລ່ຍ</span></div>
+            <b id="kpi-avg">0 ₭</b>
+            <small id="kpi-avg-sub">ໄລຍະສະເລ່ຍ —</small>
+          </article>
+          <article class="kpi">
+            <div class="kpi-top"><i class="fa-solid fa-star"></i><span>ຄະແນນ</span></div>
+            <b id="kpi-rating">—</b>
+            <small id="kpi-users">0 ຜູ້ໃຊ້</small>
+          </article>
+        </div>
+
+        <div class="ov-grid">
+          <div class="panel ov-map-panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-map-location-dot"></i> ແຜນທີ່ສົດ</h3>
+              <button type="button" class="link-btn" data-goto="live">ເບິ່ງເຕັມ</button>
+            </div>
+            <div id="ov-map"></div>
+            <div class="map-legend ov-legend">
+              <span><i class="dot on"></i> ຄົນຂັບອອນລາຍ</span>
+              <span><i class="dot off"></i> ອອຟໄລນ໌</span>
+              <span><i class="dot trip"></i> ທ່ຽວສົດ</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-bolt"></i> ກຳລັງເກີດຂຶ້ນ</h3>
+              <span id="ov-live-count" class="chip">0</span>
+            </div>
+            <div id="ov-live" class="list trip-list"></div>
+          </div>
+        </div>
+
+        <div class="ov-grid-3">
+          <div class="panel">
+            <div class="panel-h"><h3><i class="fa-solid fa-chart-column"></i> ທ່ຽວ 12 ຊົ່ວໂມງຜ່ານມາ</h3></div>
+            <div id="ov-hours" class="bars"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3><i class="fa-solid fa-car"></i> ປະເພດລົດ / ການຈ່າຍ</h3></div>
+            <div id="ov-mix" class="mix"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-bell"></i> ແຈ້ງເຕືອນ</h3>
+              <span id="ov-alert-count" class="chip warn-chip">0</span>
+            </div>
+            <div id="ov-alerts" class="list"></div>
+          </div>
+        </div>
+
+        <div class="ov-grid-3">
+          <div class="panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-id-card"></i> ຄຳຂໍຄົນຂັບ</h3>
+              <button type="button" class="link-btn" data-goto="drivers">ທັງໝົດ</button>
+            </div>
+            <div id="ov-kyc" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-users"></i> ກອງທັບຄົນຂັບ</h3>
+              <button type="button" class="link-btn" data-goto="drivers">ເບິ່ງລາຍຊື່</button>
+            </div>
+            <div id="ov-fleet" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <h3><i class="fa-solid fa-clock-rotate-left"></i> ກິດຈະກຳຫຼ້າສຸດ</h3>
+              <button type="button" class="link-btn" data-goto="activity">ເບິ່ງທັງໝົດ</button>
+            </div>
+            <div id="ov-events" class="list activity-mini"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-live" class="view hidden">
+        <div class="map-wrap">
+          <div id="ops-map"></div>
+          <div class="map-legend">
+            <span><i class="dot on"></i> ຄົນຂັບອອນລາຍ</span>
+            <span><i class="dot off"></i> ອອຟໄລນ໌</span>
+            <span><i class="dot trip"></i> ຈຸດຮັບທ່ຽວສົດ</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-trips" class="view hidden">
+        <div class="toolbar">
+          <input id="trip-q" type="search" placeholder="ຄົ້ນຫາ ຜູ້ໂດຍສານ / ປາຍທາງ...">
+          <div class="seg" id="trip-filters">
+            <button data-filter="live" class="is-on">ສົດ</button>
+            <button data-filter="open">ເປີດ</button>
+            <button data-filter="completed">ສຳເລັດ</button>
+            <button data-filter="cancelled">ຍົກເລີກ</button>
+            <button data-filter="all">ທັງໝົດ</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ເວລາ</th>
+                <th>ສະຖານະ</th>
+                <th>ຜູ້ໂດຍສານ</th>
+                <th>ເສັ້ນທາງ</th>
+                <th>ຄົນຂັບ</th>
+                <th>ລາຄາ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="trip-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-drivers" class="view hidden">
+        <div class="toolbar">
+          <input id="drv-q" type="search" placeholder="ຄົ້ນຫາຊື່ / ເບີ / ທະບຽນ...">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ຄົນຂັບ</th>
+                <th>ລົດ</th>
+                <th>ສະຖານະ</th>
+                <th>ເອກະສານ</th>
+                <th>ອອນລາຍ</th>
+                <th>ທ່ຽວ</th>
+                <th>ລາຍໄດ້</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="drv-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-users" class="view hidden">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ຊື່</th>
+                <th>ເບີ</th>
+                <th>ບົດບາດ</th>
+                <th>ທ່ຽວ</th>
+                <th>ຄະແນນ</th>
+                <th>ສະໝັກ</th>
+              </tr>
+            </thead>
+            <tbody id="user-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-activity" class="view hidden">
+        <div id="act-list" class="activity"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="kyc-drawer" class="drawer hidden">
+    <div class="drawer-back" data-close-kyc></div>
+    <aside class="drawer-panel">
+      <header class="drawer-h">
+        <div>
+          <p class="kicker">KYC review</p>
+          <h3 id="kyc-name">—</h3>
+          <p id="kyc-meta" class="muted"></p>
+        </div>
+        <button type="button" class="icon-btn" data-close-kyc><i class="fa-solid fa-xmark"></i></button>
+      </header>
+      <div id="kyc-completeness" class="kyc-complete"></div>
+      <div id="kyc-profile" class="kyc-facts"></div>
+      <div id="kyc-docs" class="kyc-admin-grid"></div>
+      <div class="drawer-actions">
+        <textarea id="kyc-note" rows="2" placeholder="ໝາຍເຫດປະຕິເສດ / ຂໍເອກະສານເພີ່ມ (ທາງເລືອກ)"></textarea>
+        <div class="actions">
+          <button type="button" class="btn btn-ok" id="kyc-approve">ອະນຸມັດ</button>
+          <button type="button" class="btn btn-no" id="kyc-reject">ປະຕິເສດ</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div id="kyc-lightbox" class="lightbox hidden">
+    <img id="kyc-lightbox-img" alt="">
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

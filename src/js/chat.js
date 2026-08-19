@@ -1,5 +1,9 @@
 /** In-trip chat with contextual driver replies */
 import { ST } from './state.js';
+import { isLive, currentUser } from './live/session.js';
+import { sendLiveChat, chatFor } from './live/market.js';
+import { getActiveOrder } from './marketplace.js';
+import { onLive } from './live/client.js';
 
 let peerName = 'ຄົນຂັບ';
 
@@ -20,7 +24,36 @@ export function setChatPeer(name) {
 export function resetChat(intro) {
   const box = document.getElementById('chat-box');
   if (!box) return;
+  if (isLive()) {
+    renderLiveChat(intro);
+    if (!window.__chatBound) {
+      window.__chatBound = true;
+      onLive(() => renderLiveChat());
+    }
+    return;
+  }
   box.innerHTML = `<div class="bg-idrive-dark p-3 rounded-2xl max-w-[80%] text-gray-300 border border-idrive-border">${intro || 'ສະບາຍດີ! ກຳລັງໄປຮັບ. 🚗'}</div>`;
+}
+
+function renderLiveChat(intro) {
+  const box = document.getElementById('chat-box');
+  if (!box) return;
+  const order = getActiveOrder();
+  const msgs = order ? chatFor(order.id) : [];
+  const me = currentUser()?.id;
+  if (!msgs.length) {
+    box.innerHTML = `<div class="bg-idrive-dark p-3 rounded-2xl max-w-[80%] text-gray-300 border border-idrive-border">${intro || 'ສະບາຍດີ! ກຳລັງໄປຮັບ. 🚗'}</div>`;
+    return;
+  }
+  box.innerHTML = msgs
+    .map((m) => {
+      const mine = m.userId === me;
+      return mine
+        ? `<div class="bg-idrive-green text-gray-950 font-bold p-3 rounded-2xl max-w-[80%] ml-auto shadow fade-up">${m.text}</div>`
+        : `<div class="bg-idrive-dark p-3 rounded-2xl max-w-[80%] text-gray-300 border border-idrive-border fade-up">${m.text}</div>`;
+    })
+    .join('');
+  box.scrollTop = box.scrollHeight;
 }
 
 export function quickChat(msg) {
@@ -28,11 +61,22 @@ export function quickChat(msg) {
   sendChat();
 }
 
-export function sendChat() {
+export async function sendChat() {
   const inp = document.getElementById('chat-input');
   const msg = inp.value.trim();
   if (!msg) return;
   const box = document.getElementById('chat-box');
+  if (isLive()) {
+    const order = getActiveOrder();
+    if (!order) return;
+    inp.value = '';
+    try {
+      await sendLiveChat(order.id, msg);
+    } catch (err) {
+      box.innerHTML += `<div class="text-[10px] text-red-400">${err.message}</div>`;
+    }
+    return;
+  }
   box.innerHTML += `<div class="bg-idrive-green text-gray-950 font-bold p-3 rounded-2xl max-w-[80%] ml-auto shadow fade-up">${msg}</div>`;
   inp.value = '';
   box.scrollTop = box.scrollHeight;

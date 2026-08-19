@@ -88,16 +88,16 @@ export const JOBS = [
   {
     id: 101,
     passenger: 'ທ່ານ ບຸນເກີດ',
-    fare: 35000,
-    counter: 40000,
+    fare: 75000,
+    counter: 85000,
     route: 'ຕະຫຼາດຊາວໄຮ່ ➔ ດົງໂດກ',
     dist: '5.2 ກມ • ເກັງ'
   },
   {
     id: 102,
     passenger: 'ທ່ານ ນາງ ມະລີ',
-    fare: 20000,
-    counter: 25000,
+    fare: 33000,
+    counter: 38000,
     route: 'ໂພນໄຊ ➔ ໂຮງໝໍ 150 ຕຽງ',
     dist: '2.8 ກມ • ມໍໄຊ'
   }
