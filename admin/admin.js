@@ -89,7 +89,12 @@ async function onLogin() {
   const phone = document.getElementById('login-phone').value.replace(/\D/g, '');
   const pin = document.getElementById('login-pin').value.trim();
   const err = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
   err.hidden = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'ກຳລັງເຂົ້າ...';
+  }
   try {
     const user = await liveLogin({ phone, name: 'iDrive Admin', pin });
     if (user.role !== 'admin') {
@@ -101,6 +106,11 @@ async function onLogin() {
   } catch (e) {
     err.hidden = false;
     err.textContent = e.message || 'ເຂົ້າລະບົບບໍ່ສຳເລັດ';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'ເຂົ້າສູ່ລະບົບ';
+    }
   }
 }
 
@@ -120,12 +130,15 @@ function showApp(user) {
 function updateConn() {
   const pill = document.getElementById('conn-pill');
   const live = getLiveState();
+  pill.classList.remove('is-live', 'is-demo');
   if (live.connected) {
     pill.textContent = 'LIVE';
     pill.classList.add('is-live');
+  } else if (live.reachable) {
+    pill.textContent = 'ກຳລັງເຊື່ອມ';
   } else {
-    pill.textContent = live.reachable ? 'ກຳລັງເຊື່ອມ' : 'OFFLINE';
-    pill.classList.remove('is-live');
+    pill.textContent = 'DEMO';
+    pill.classList.add('is-demo');
   }
 }
 
@@ -317,7 +330,7 @@ function alertCard(a) {
 }
 
 function eventCard(e) {
-  return `<article class="row"><div><p>${esc(eventLo(e.type))}</p><small>${e.orderId ? esc(e.orderId) : e.userId ? esc(e.userId) : ''}</small></div><time>${fmtTime(e.at)}</time></article>`;
+  return `<article class="row"><div><p>${esc(eventLo(e.type))}</p><small>${esc(e.detail || e.orderId || e.userId || '')}</small></div><time>${fmtTime(e.at)}</time></article>`;
 }
 
 function renderTrips() {
@@ -602,7 +615,8 @@ function eventLo(type) {
       'driver.approve': 'ອະນຸມັດຄົນຂັບ',
       'driver.reject': 'ປະຕິເສດຄົນຂັບ',
       'user.register': 'ລົງທະບຽນຜູ້ໃຊ້',
-      'admin.seed': 'ສ້າງບັນຊີແອັດມິນ'
+      'admin.seed': 'ສ້າງບັນຊີແອັດມິນ',
+      demo: 'ໂໝດເດໂມ — ບໍ່ມີເຊີບເວີສົດ'
     }[type] || type
   );
 }

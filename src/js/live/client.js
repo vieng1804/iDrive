@@ -1,10 +1,20 @@
-import { liveBase, getSession, setSession, currentUser } from './session.js';
+import {
+  liveBase,
+  getSession,
+  setSession,
+  currentUser,
+  isStaticPreview,
+  normalizePhone,
+  ADMIN_DEMO_PHONE,
+  ADMIN_DEMO_PIN
+} from './session.js';
 
 const listeners = new Set();
 
 const state = {
   connected: false,
   reachable: false,
+  demo: false,
   user: null,
   driver: null,
   token: null,
@@ -30,6 +40,7 @@ function emit() {
   window.__idriveLive = {
     connected: state.connected,
     reachable: state.reachable,
+    demo: state.demo,
     user: state.user,
     driver: state.driver
   };
@@ -51,6 +62,11 @@ export async function api(path, { method = 'GET', body, token } = {}) {
 }
 
 export async function probeLive() {
+  if (isStaticPreview()) {
+    state.reachable = false;
+    emit();
+    return false;
+  }
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 1800);
@@ -67,7 +83,7 @@ export async function probeLive() {
 export async function connectLive() {
   await probeLive();
   const session = getSession();
-  if (state.reachable && session?.token) {
+  if (state.reachable && session?.token && session.token !== 'demo') {
     try {
       const me = await api('/api/me', { token: session.token });
       applyAuth(session.token, me.user, me.driver);
@@ -78,16 +94,24 @@ export async function connectLive() {
       state.token = null;
       state.user = null;
     }
+  } else if (!state.reachable && session?.demo && session.user) {
+    state.demo = true;
+    applyAuth('demo', session.user, null);
+    applySnapshot({ orders: [], drivers: [], messages: [], me: session.user });
   }
   emit();
   return state;
 }
 
 export async function liveLogin({ phone, name, pin }) {
+  if (!state.reachable) await probeLive();
+  if (!state.reachable) return demoLogin({ phone, name, pin });
+
   const data = await api('/api/auth/login', {
     method: 'POST',
-    body: { phone, name, pin }
+    body: { phone: normalizePhone(phone), name, pin }
   });
+  state.demo = false;
   applyAuth(data.token, data.user, data.driver);
   setSession({ token: data.token, user: data.user });
   const snap = await api('/api/snapshot');
@@ -95,6 +119,38 @@ export async function liveLogin({ phone, name, pin }) {
   openSocket();
   emit();
   return data.user;
+}
+
+function demoLogin({ phone, name, pin }) {
+  const p = normalizePhone(phone);
+  const code = String(pin || '').trim();
+  if (p.length < 8) throw new Error('ເບີໂທບໍ່ຖືກ');
+  if (!/^\d{4,6}$/.test(code)) throw new Error('ຕ້ອງໃສ່ລະຫັດ 4–6 ໂຕ');
+
+  const adminConsole = window.__IDRIVE_SESSION_KEY === 'idrive_admin_session_v1';
+  const isAdmin = p === ADMIN_DEMO_PHONE && code === ADMIN_DEMO_PIN;
+  if (adminConsole && !isAdmin) {
+    throw new Error(`ເບີ ຫຼື PIN ແອັດມິນບໍ່ຖືກ (ເດໂມ: ${ADMIN_DEMO_PHONE} / ${ADMIN_DEMO_PIN})`);
+  }
+  if (!adminConsole && !isAdmin && code !== '1234') {
+    throw new Error('OTP ບໍ່ຖືກ — ໃຊ້ 1234 ໃນໂໝດເດໂມ');
+  }
+
+  const user = {
+    id: isAdmin ? 'usr-admin-demo' : `usr-demo-${p.slice(-4)}`,
+    phone: p,
+    name: name || (isAdmin ? 'iDrive Admin' : `ຜູ້ໃຊ້ ${p.slice(-4)}`),
+    role: isAdmin ? 'admin' : 'passenger',
+    rating: isAdmin ? 5 : 4.96,
+    trips: 0
+  };
+  state.demo = true;
+  state.connected = false;
+  applyAuth('demo', user, null);
+  setSession({ token: 'demo', user, demo: true });
+  applySnapshot({ orders: [], drivers: [], messages: [], me: user, driver: null });
+  emit();
+  return user;
 }
 
 export async function liveLogout() {
@@ -109,6 +165,7 @@ export async function liveLogout() {
   state.user = null;
   state.driver = null;
   state.connected = false;
+  state.demo = false;
   state.orders = [];
   emit();
 }
@@ -117,7 +174,14 @@ function applyAuth(token, user, driver) {
   state.token = token;
   state.user = user;
   state.driver = driver || null;
-  window.__idriveLive = { ...window.__idriveLive, user, driver, connected: true };
+  window.__idriveLive = {
+    ...window.__idriveLive,
+    user,
+    driver,
+    connected: !!state.connected,
+    demo: !!state.demo,
+    reachable: state.reachable
+  };
 }
 
 function applySnapshot(snap) {
@@ -131,6 +195,7 @@ function applySnapshot(snap) {
 
 function openSocket() {
   closeSocket();
+  if (!state.token || state.demo || !state.reachable) return;
   const base = liveBase();
   const wsBase = base ? base.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
   ws = new WebSocket(`${wsBase}/ws?token=${encodeURIComponent(state.token)}`);

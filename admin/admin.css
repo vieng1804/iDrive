@@ -150,6 +150,7 @@ body {
   color: var(--warn);
 }
 .pill.is-live { background: rgba(0, 232, 106, 0.14); color: var(--green); }
+.pill.is-demo { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
 .clock { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
 .who {
   font-size: 12px;

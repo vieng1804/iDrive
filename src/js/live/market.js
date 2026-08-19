@@ -153,10 +153,59 @@ export function chatFor(orderId) {
 }
 
 export async function fetchAdminOverview() {
+  if (!getLiveState().reachable) {
+    const me = getLiveState().user;
+    return {
+      updatedAt: Date.now(),
+      stats: {
+        users: 0,
+        drivers: 0,
+        pendingDrivers: 0,
+        onlineDrivers: 0,
+        liveTrips: 0,
+        openJobs: 0,
+        bidding: 0,
+        completed: 0,
+        cancelled: 0,
+        revenue: 0,
+        todayRevenue: 0,
+        yesterdayRevenue: 0,
+        weekRevenue: 0,
+        todayTrips: 0,
+        yesterdayTrips: 0,
+        weekTrips: 0,
+        avgFare: 0,
+        avgRating: 0,
+        ratingCount: 0,
+        completionRate: 0,
+        avgKm: 0,
+        vehicleMix: { ride: 0, moto: 0, comfort: 0, suv: 0 },
+        paymentMix: {},
+        hours: Array.from({ length: 12 }, (_, i) => ({
+          h: new Date(Date.now() - (12 - i) * 3600000).getHours(),
+          n: 0
+        })),
+        waitingLong: 0
+      },
+      orders: [],
+      drivers: [],
+      users: me ? [me] : [],
+      events: [
+        {
+          at: Date.now(),
+          type: 'demo',
+          detail: 'ໂໝດເດໂມ GitHub Pages — ເປີດ npm run live ເພື່ອເຫັນຂໍ້ມູນສົດ'
+        }
+      ]
+    };
+  }
   return api('/api/admin/overview');
 }
 
 export async function adminSetDriver(userId, reject = false, note = '') {
+  if (!getLiveState().reachable) {
+    throw new Error('ໂໝດເດໂມ — ເປີດ npm run live ເພື່ອອະນຸມັດຄົນຂັບຈິງ');
+  }
   return api(`/api/admin/drivers/${userId}/approve`, {
     method: 'POST',
     body: { reject, note }
@@ -164,5 +213,8 @@ export async function adminSetDriver(userId, reject = false, note = '') {
 }
 
 export async function adminCancelOrder(orderId) {
+  if (!getLiveState().reachable) {
+    throw new Error('ໂໝດເດໂມ — ເປີດ npm run live ເພື່ອຍົກເລີກທ່ຽວຈິງ');
+  }
   return api(`/api/admin/orders/${orderId}/cancel`, { method: 'POST' });
 }
