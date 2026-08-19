@@ -1,5 +1,6 @@
 /** Passenger booking + InDrive fare negotiation */
-import { ST, BASE_FARE, FARE_PER_KM } from './state.js';
+import { ST } from './state.js';
+import { recommendFare, applyRecommendedFare } from './fare.js';
 import { SERVICES } from './data/locations.js';
 import { show, toast, openModal, closeModal } from './ui.js';
 import {
@@ -28,7 +29,18 @@ import { renderHistory } from './history.js';
 
 let stopBots = null;
 let unsub = null;
+let lastTripPhase = null;
 ST.pendingRating = 5;
+
+function setCompleteTripReady(ready) {
+  const btn = document.getElementById('complete-trip-btn');
+  if (!btn) return;
+  btn.disabled = !ready;
+  btn.classList.toggle('is-ready', !!ready);
+  btn.textContent = ready
+    ? 'ສຳເລັດທ່ຽວ — ຊຳລະ & ໃຫ້ຄະແນນ'
+    : 'ລໍຖ້າຮອດຈຸດໝາຍ...';
+}
 
 export function setSvc(svc) {
   ST.service = svc;
@@ -75,21 +87,12 @@ export function selectVehicle(type, baseFare) {
       'glow-green-sm'
     );
   }
-  if (ST.routeDistance) {
-    ST.fare =
-      Math.ceil(
-        (BASE_FARE[type] + FARE_PER_KM[type] * parseFloat(ST.routeDistance)) /
-          1000
-      ) * 1000;
-  } else {
-    ST.fare = baseFare;
-  }
-  document.getElementById('fare-input').value = ST.fare;
-  document.getElementById('suggested-label').innerText =
-    `ແນະນຳ: ${ST.fare.toLocaleString()} ₭`;
-  const badge = document.getElementById('route-fare-badge');
-  if (badge)
-    badge.innerHTML = `<i class="fa-solid fa-coins"></i> ${ST.fare.toLocaleString()} ₭`;
+  const rec = recommendFare({
+    vehicle: type,
+    km: parseFloat(ST.routeDistance) || 0,
+    minutes: Number(ST.routeTime) || 0
+  });
+  applyRecommendedFare(rec);
 }
 
 export function adjFare(d) {
@@ -141,7 +144,7 @@ function renderBids(order) {
     .join('');
 }
 
-export function findDriver() {
+export async function findDriver() {
   if (!ST.pickup || !ST.dest) {
     toast('⚠️ ຕ້ອງປ້ອນຈຸດຮັບ & ຈຸດໝາຍ');
     return;
@@ -149,27 +152,37 @@ export function findDriver() {
   ST.fare =
     parseInt(document.getElementById('fare-input').value, 10) || ST.fare;
 
-  const order = createPassengerOrder({
-    pickup: ST.pickup,
-    dest: ST.dest,
-    fare: ST.fare,
-    vehicle: ST.vehicle,
-    payment: ST.payment,
-    note: document.getElementById('note-input')?.value || '',
-    distance: ST.routeDistance,
-    duration: ST.routeTime
-  });
+  let order;
+  try {
+    order = await createPassengerOrder({
+      pickup: ST.pickup,
+      dest: ST.dest,
+      fare: ST.fare,
+      vehicle: ST.vehicle,
+      payment: ST.payment,
+      note: document.getElementById('note-input')?.value || '',
+      distance: ST.routeDistance,
+      duration: ST.routeTime
+    });
+  } catch (err) {
+    toast(`❌ ${err.message || 'ປະກາດງານບໍ່ສຳເລັດ'}`);
+    return;
+  }
   ST.activeOrderId = order.id;
 
   show('booking-form', false);
   show('searching-view', true);
   show('trip-view', false);
-  window.setSheetSnap?.('mid');
+  window.sizeSheetForSearch?.();
   document.getElementById('bids-container').innerHTML = '';
   document.getElementById('bid-count').innerText = '0';
   document.getElementById('offered-price-txt').innerText =
     `${ST.fare.toLocaleString()} ₭`;
-  toast('📡 ປະກາດຫາຄົນຂັບແບບ InDrive...');
+  toast(
+    window.__idriveLive?.connected
+      ? '📡 ປະກາດຫາຄົນຂັບຈິງແລ້ວ — ລໍຖ້າຂໍ້ສະເໜີ'
+      : '📡 ປະກາດຫາຄົນຂັບແບບ InDrive...'
+  );
 
   if (stopBots) stopBots();
   stopBots = spawnBotBids(order.id, () => {
@@ -181,19 +194,26 @@ export function findDriver() {
       const o = getActiveOrder();
       if (!o) return;
       if (o.status === 'open' || o.status === 'bidding') renderBids(o);
-      if (o.status === 'matched' && ST.role === 'passenger') {
-        // already handled by accept
+      if (
+        o.status === 'matched' &&
+        ST.role === 'passenger' &&
+        document.getElementById('trip-view')?.classList.contains('hidden')
+      ) {
+        startMatchedTrip(o);
+      }
+      if (o.status === 'matched' && window.__idriveLive?.connected) {
+        syncLiveTripPhase(o);
       }
     });
   }
 }
 
-export function acceptDriverBid(orderId, driverId) {
+export async function acceptDriverBid(orderId, driverId) {
   if (stopBots) {
     stopBots();
     stopBots = null;
   }
-  const matched = acceptBid(orderId, driverId);
+  const matched = await acceptBid(orderId, driverId);
   if (!matched) {
     toast('❌ ບໍ່ພົບຂໍ້ສະເໜີ');
     return;
@@ -201,11 +221,11 @@ export function acceptDriverBid(orderId, driverId) {
   startMatchedTrip(matched);
 }
 
-export function counterToDriver(orderId, driverId, currentPrice) {
+export async function counterToDriver(orderId, driverId, currentPrice) {
   const newPrice = Math.max(5000, currentPrice + 5000);
   const bid = getOrder(orderId)?.bids.find((b) => String(b.driverId) === String(driverId));
   if (!bid) return;
-  addBid(orderId, {
+  await addBid(orderId, {
     ...bid,
     price: newPrice,
     type: 'passenger_counter',
@@ -215,7 +235,8 @@ export function counterToDriver(orderId, driverId, currentPrice) {
   toast(`📤 ຕໍ່ລາຄາ ${newPrice.toLocaleString()} ₭ ໃຫ້ຄົນຂັບ`);
   renderBids(getOrder(orderId));
 
-  // Bot may accept the counter after a beat
+  if (window.__idriveLive?.connected) return;
+
   setTimeout(() => {
     const o = getOrder(orderId);
     if (!o || o.status === 'matched') return;
@@ -244,10 +265,12 @@ export function counterToDriver(orderId, driverId, currentPrice) {
 
 function startMatchedTrip(order) {
   const bid = order.acceptedBid;
+  lastTripPhase = null;
   show('searching-view', false);
   show('booking-form', false);
   show('trip-view', true);
-  window.setSheetSnap?.('mid');
+  setCompleteTripReady(false);
+  window.sizeSheetForTrip?.();
 
   document.getElementById('trip-driver-name').innerText = bid.name;
   document.getElementById('trip-driver-car').innerText = bid.car;
@@ -259,9 +282,6 @@ function startMatchedTrip(order) {
   if (order.distance) {
     document.getElementById('trip-distance').innerText = `${order.distance} ກມ`;
   }
-  document.getElementById('complete-trip-btn').classList.add('opacity-50', 'pointer-events-none');
-  document.getElementById('complete-trip-btn').innerText =
-    'ລໍຖ້າຮອດຈຸດໝາຍ...';
 
   setChatPeer(bid.name);
   resetChat(`ສະບາຍດີ! ຂ້ອຍ ${bid.name.split(' ').slice(0, 2).join(' ')} ກຳລັງໄປຮັບ. 🚗`);
@@ -269,22 +289,49 @@ function startMatchedTrip(order) {
 
   ST.pickup = order.pickup;
   ST.dest = order.dest;
+
+  if (window.__idriveLive?.connected) {
+    syncLiveTripPhase(order);
+    return;
+  }
+
   animateDriver(() => {
     setTripPhase(order.id, 'arrived');
-    const btn = document.getElementById('complete-trip-btn');
-    btn.classList.remove('opacity-50', 'pointer-events-none');
-    btn.innerText = 'ສຳເລັດທ່ຽວ — ຊຳລະ & ໃຫ້ຄະແນນ';
+    setCompleteTripReady(true);
+    window.sizeSheetForTrip?.();
   });
 }
 
-export function cancelRequest() {
+function syncLiveTripPhase(order) {
+  const s = document.getElementById('trip-status');
+  const u = document.getElementById('trip-sub');
+  const labels = {
+    to_pickup: ['ຄົນຂັບກຳລັງມາຮັບ...', 'ຕຳແໜ່ງສົດຈາກ GPS ຄົນຂັບ'],
+    waiting: ['ຄົນຂັບຮອດຈຸດຮັບແລ້ວ', 'ກະລຸນາຂຶ້ນລົດ'],
+    onboard: ['ກຳລັງເດີນທາງໄປຈຸດໝາຍ...', 'ນັ່ງຄົນຂັບແລ້ວ'],
+    arrived: ['ຮອດຈຸດໝາຍແລ້ວ ✅', 'ກະລຸນາຊຳລະ & ໃຫ້ຄະແນນ']
+  };
+  const pair = labels[order.phase] || labels.to_pickup;
+  if (s) s.innerText = pair[0];
+  if (u) u.innerText = pair[1];
+  if (order.phase === 'arrived') {
+    setCompleteTripReady(true);
+    if (lastTripPhase !== 'arrived') window.sizeSheetForTrip?.();
+  } else {
+    setCompleteTripReady(false);
+  }
+  lastTripPhase = order.phase;
+}
+
+export async function cancelRequest() {
   if (stopBots) {
     stopBots();
     stopBots = null;
   }
   const id = ST.activeOrderId || getActiveOrder()?.id;
-  if (id) cancelOrder(id);
+  if (id) await cancelOrder(id);
   ST.activeOrderId = null;
+  lastTripPhase = null;
   show('searching-view', false);
   show('trip-view', false);
   show('booking-form', true);
@@ -294,10 +341,12 @@ export function cancelRequest() {
 
 export function completeTrip() {
   const order = getActiveOrder();
-  stopDriverAnim();
-  if (order && order.phase !== 'arrived' && order.status === 'matched') {
-    // allow early complete for demo if needed, but prefer arrived
+  const live = window.__idriveLive?.connected;
+  if (order?.status === 'matched' && order.phase !== 'arrived' && live) {
+    toast('ກະລຸນາລໍຖ້າຮອດຈຸດໝາຍກ່ອນ');
+    return;
   }
+  stopDriverAnim();
   openModal('rating-modal');
 }
 
@@ -324,6 +373,7 @@ export function submitReview() {
   show('searching-view', false);
   show('booking-form', true);
   ST.activeOrderId = null;
+  lastTripPhase = null;
   window.showLocationStep?.();
   refreshWalletUI();
   renderHistory();
@@ -343,5 +393,15 @@ export function syncPassengerToMatched(order) {
 export function bootPassengerListeners() {
   onMarket((db) => {
     refreshWalletUI(db);
+    const o = getActiveOrder();
+    if (
+      o?.status === 'matched' &&
+      ST.role === 'passenger' &&
+      document.getElementById('trip-view')?.classList.contains('hidden')
+    ) {
+      startMatchedTrip(o);
+    } else if (o?.status === 'matched' && window.__idriveLive?.connected) {
+      syncLiveTripPhase(o);
+    }
   });
 }

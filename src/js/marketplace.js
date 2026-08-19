@@ -1,10 +1,13 @@
 /** InDrive-style live order marketplace (passenger ↔ driver negotiation) */
 import { DRIVERS } from './data/locations.js';
 import { loadDB, patchDB, uid } from './persist.js';
+import { isLive } from './live/session.js';
+import * as live from './live/market.js';
 
 const listeners = new Set();
 
 export function onMarket(fn) {
+  if (isLive()) return live.onLiveMarket(fn);
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
@@ -15,14 +18,17 @@ function emit() {
 }
 
 export function getOpenOrders() {
+  if (isLive()) return live.getOpenOrders();
   return loadDB().orders.filter((o) => o.status === 'open' || o.status === 'bidding');
 }
 
 export function getOrder(id) {
+  if (isLive()) return live.getOrder(id);
   return loadDB().orders.find((o) => o.id === id) || null;
 }
 
 export function getActiveOrder() {
+  if (isLive()) return live.getActiveOrder();
   const db = loadDB();
   if (!db.activeOrderId) return null;
   return db.orders.find((o) => o.id === db.activeOrderId) || null;
@@ -39,6 +45,19 @@ export function createPassengerOrder({
   duration,
   passengerName = 'ທ່ານ ສົມພອນ'
 }) {
+  if (isLive()) {
+    return live.createPassengerOrder({
+      pickup,
+      dest,
+      fare,
+      vehicle,
+      payment,
+      note,
+      distance,
+      duration,
+      passengerName
+    });
+  }
   const order = {
     id: uid('ord'),
     status: 'open',
@@ -67,6 +86,7 @@ export function createPassengerOrder({
 }
 
 export function cancelOrder(orderId) {
+  if (isLive()) return live.cancelOrder(orderId);
   patchDB((db) => {
     const o = db.orders.find((x) => x.id === orderId);
     if (o && (o.status === 'open' || o.status === 'bidding')) {
@@ -78,6 +98,7 @@ export function cancelOrder(orderId) {
 }
 
 export function addBid(orderId, bid) {
+  if (isLive()) return live.addBid(orderId, bid);
   let saved = null;
   patchDB((db) => {
     const o = db.orders.find((x) => x.id === orderId);
@@ -103,6 +124,7 @@ export function passengerCounter(orderId, driverId, newPrice) {
 }
 
 export function acceptBid(orderId, driverId) {
+  if (isLive()) return live.acceptBid(orderId, driverId);
   let result = null;
   patchDB((db) => {
     const o = db.orders.find((x) => x.id === orderId);
@@ -129,6 +151,7 @@ export function acceptBid(orderId, driverId) {
 
 /** Driver accepts passenger's offered fare as-is */
 export function driverAcceptOffer(orderId, driver) {
+  if (isLive()) return live.driverAcceptOffer(orderId);
   addBid(orderId, {
     driverId: driver.id,
     name: driver.name,
@@ -145,6 +168,7 @@ export function driverAcceptOffer(orderId, driver) {
 
 /** Driver sends counter-offer */
 export function driverCounterOffer(orderId, driver, price) {
+  if (isLive()) return live.driverCounterOffer(orderId, price);
   return addBid(orderId, {
     driverId: driver.id,
     name: driver.name,
@@ -159,6 +183,7 @@ export function driverCounterOffer(orderId, driver, price) {
 }
 
 export function setTripPhase(orderId, phase) {
+  if (isLive()) return live.setTripPhase(orderId, phase);
   patchDB((db) => {
     const o = db.orders.find((x) => x.id === orderId);
     if (o) o.phase = phase;
@@ -167,6 +192,7 @@ export function setTripPhase(orderId, phase) {
 }
 
 export function completeOrder(orderId, { rating = 5, review = '' } = {}) {
+  if (isLive()) return live.completeOrder(orderId, { rating, review });
   let done = null;
   patchDB((db) => {
     const o = db.orders.find((x) => x.id === orderId);
@@ -212,6 +238,7 @@ function shortName(n = '') {
 
 /** Simulate nearby bot drivers bidding like real InDrive */
 export function spawnBotBids(orderId, onBid) {
+  if (isLive()) return () => {};
   const timers = [];
   const order = getOrder(orderId);
   if (!order) return () => {};
@@ -265,3 +292,8 @@ export const ME_AS_DRIVER = {
   img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80',
   eta: '1 ນທ'
 };
+
+export function getMeAsDriver() {
+  if (isLive()) return live.getMeAsDriver();
+  return ME_AS_DRIVER;
+}

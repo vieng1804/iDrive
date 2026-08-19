@@ -20,13 +20,17 @@ import {
   setSheetSnap,
   expandMap,
   restoreSheet,
-  sizeSheetForRide
+  sizeSheetForRide,
+  sizeSheetForTrip,
+  sizeSheetForSearch
 } from './sheet.js';
 import {
   openDriverApply,
   driverApplyNext,
   driverApplyBack,
-  startDriveAfterApply
+  startDriveAfterApply,
+  onKycFile,
+  driverApplyEditDocs
 } from './driverApply.js';
 import {
   initMap,
@@ -34,7 +38,8 @@ import {
   recenterMap,
   getCurrentLocation,
   setMapPlaceHandler,
-  fitActiveRoute
+  fitActiveRoute,
+  fitOnlineDrivers
 } from './map.js';
 import {
   setSvc,
@@ -57,7 +62,8 @@ import {
   driverTakeJob,
   driverSendCounter,
   bootDriverListeners,
-  refreshDriverStats
+  refreshDriverStats,
+  driverAdvancePhase
 } from './driver.js';
 import {
   setPayment,
@@ -77,6 +83,7 @@ import {
   toast
 } from './ui.js';
 import { loadDB } from './persist.js';
+import { openAdmin, adminApprove, adminReject, refreshAdmin } from './admin.js';
 import {
   startSplash,
   onAppReady,
@@ -166,6 +173,7 @@ Object.assign(window, {
   closeModal,
   toast,
   recenterMap,
+  fitOnlineDrivers,
   toggleMapStyle,
   toggleDriverOnline,
   renderDriverFeed,
@@ -219,6 +227,8 @@ Object.assign(window, {
   expandMap,
   restoreSheet,
   sizeSheetForRide,
+  sizeSheetForTrip,
+  sizeSheetForSearch,
   onMapSearch,
   setMapSearchTarget,
   onMapSearchFocus,
@@ -226,9 +236,18 @@ Object.assign(window, {
   driverApplyNext,
   driverApplyBack,
   startDriveAfterApply,
+  onKycFile,
+  driverApplyEditDocs,
   promptInstallApp,
-  hidePwaMiniTip
+  hidePwaMiniTip,
+  openAdmin,
+  adminApprove,
+  adminReject,
+  refreshAdmin,
+  driverAdvancePhase
 });
+
+window.openAdminConsole = openAdmin;
 
 registerServiceWorker();
 

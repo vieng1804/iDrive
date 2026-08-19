@@ -4,6 +4,10 @@ import { renderHistory } from './history.js';
 import { refreshWalletUI, setPayment, showQR, topUpWallet } from './wallet.js';
 import { toast, toggleSidebar, closeModal, openModal } from './ui.js';
 import { ST } from './state.js';
+import { connectLive, liveLogin, liveLogout, getLiveState, onLive, dbView } from './live/client.js';
+import { isLive, currentUser } from './live/session.js';
+import { renderLiveDrivers, fitOnlineDrivers } from './map.js';
+import { getActiveOrder } from './marketplace.js';
 
 let currentTab = 'home';
 let onboardingStep = 0;
@@ -33,12 +37,21 @@ export function onAppReady(cb) {
 }
 
 function dbUser(db = loadDB()) {
+  const live = currentUser();
+  if (live) {
+    return {
+      name: live.name,
+      phone: live.phone,
+      rating: live.rating || 4.96,
+      trips: live.trips || 0
+    };
+  }
   return (
     db.user || {
-      name: 'ທ່ານ ສົມພອນ ແກ້ວມະນີ',
-      phone: '2055889900',
+      name: 'ຜູ້ໃຊ້ iDrive',
+      phone: '',
       rating: 4.96,
-      trips: 54
+      trips: 0
     }
   );
 }
@@ -49,6 +62,7 @@ export function goFlow(id) {
     if (!el) return;
     el.classList.toggle('hidden', x !== id);
   });
+  if (id === 'flow-auth') syncAuthCopy();
 }
 
 export function goTab(tab) {
@@ -172,16 +186,20 @@ function formatPhone(p) {
 
 /* ---------- Splash / Onboarding / Auth ---------- */
 
-export function startSplash() {
+export async function startSplash() {
   goFlow('flow-splash');
+  await connectLive();
+  bindLiveChrome();
   setTimeout(() => {
     const db = loadDB();
+    const liveUser = currentUser();
     if (!db.onboardingDone) {
       onboardingStep = 0;
       goFlow('flow-onboarding');
       renderOnboarding();
-    } else if (!db.loggedIn) {
+    } else if (!(db.loggedIn || liveUser)) {
       goFlow('flow-auth');
+      syncAuthCopy();
     } else {
       enterApp();
     }
@@ -294,7 +312,7 @@ export function renderOnboardingRestart() {
   closeScreen('settings');
 }
 
-export function submitLogin() {
+export async function submitLogin() {
   const phone = document.getElementById('auth-phone')?.value.replace(/\D/g, '') || '';
   const name = document.getElementById('auth-name')?.value.trim() || 'ຜູ້ໃຊ້ iDrive';
   if (phone.length < 8) {
@@ -305,13 +323,44 @@ export function submitLogin() {
   const loginBtn = document.getElementById('auth-login-btn');
   if (otpBox?.classList.contains('hidden')) {
     otpBox.classList.remove('hidden');
-    document.getElementById('auth-hint').textContent =
-      'ສົ່ງ OTP ໄປຫາເບີຂອງທ່ານແລ້ວ (ໃຊ້ 1234)';
-    if (loginBtn) loginBtn.textContent = 'ຢືນຢັນ OTP';
-    toast('📱 OTP: 1234 (ທົດສອບ)');
+    syncAuthCopy(true);
+    if (loginBtn) loginBtn.textContent = getLiveState().reachable ? 'ຢືນຢັນລະຫັດ' : 'ຢືນຢັນ OTP';
+    toast(getLiveState().reachable ? '🔐 ຕັ້ງ/ໃສ່ລະຫັດ 4 ໂຕ' : '📱 OTP: 1234 (ທົດສອບ)');
     return;
   }
   const otp = document.getElementById('auth-otp')?.value.trim();
+  if (getLiveState().reachable) {
+    if (!/^\d{4,6}$/.test(otp)) {
+      toast('❌ ລະຫັດຕ້ອງເປັນ 4–6 ໂຕ');
+      return;
+    }
+    try {
+      if (loginBtn) loginBtn.textContent = 'ກຳລັງເຂົ້າ...';
+      const user = await liveLogin({ phone, name, pin: otp });
+      patchDB((d) => {
+        d.loggedIn = true;
+        d.user = {
+          name: user.name,
+          phone: user.phone,
+          rating: user.rating,
+          trips: user.trips,
+          role: user.role
+        };
+      });
+      if (user.role === 'admin') {
+        toast('ກຳລັງເປີດ Admin Console...');
+        window.location.href = new URL('admin/', window.location.href).href;
+        return;
+      }
+      toast('✅ ເຂົ້າສູ່ລະບົບສົດແລ້ວ');
+      enterApp();
+      return;
+    } catch (err) {
+      if (loginBtn) loginBtn.textContent = 'ຢືນຢັນລະຫັດ';
+      toast(`❌ ${err.message}`);
+    }
+    return;
+  }
   if (otp !== '1234') {
     toast('❌ OTP ບໍ່ຖືກ — ລອງ 1234');
     return;
@@ -347,7 +396,48 @@ export function submitLogin() {
   enterApp();
 }
 
-export function logout() {
+function syncAuthCopy(otpVisible = false) {
+  const hint = document.getElementById('auth-hint');
+  const label = document.querySelector('#auth-otp-box label');
+  const live = getLiveState().reachable;
+  if (hint) {
+    hint.textContent = live
+      ? otpVisible
+        ? 'ລະຫັດນີ້ໃຊ້ເຂົ້າໃໝ່ໄດ້ທຸກເຄື່ອງ — ຢ່າໃຊ້ເບີດຽວກັນກັບຄົນຂັບ'
+        : 'ລະບົບສົດພ້ອມ — ກົດສືບຕໍ່ເພື່ອຕັ້ງລະຫັດ 4 ໂຕ'
+      : 'ກົດສົ່ງ OTP ເພື່ອຢືນຢັນເບີ';
+  }
+  if (label) label.textContent = live ? 'ລະຫັດ 4 ໂຕ' : 'ລະຫັດ OTP';
+  const loginBtn = document.getElementById('auth-login-btn');
+  if (loginBtn && document.getElementById('auth-otp-box')?.classList.contains('hidden')) {
+    loginBtn.textContent = live ? 'ສືບຕໍ່' : 'ສົ່ງ OTP';
+  }
+}
+
+function bindLiveChrome() {
+  onLive((s) => {
+    const pill = document.getElementById('live-pill');
+    if (pill) {
+      pill.textContent = s.connected ? 'LIVE' : s.reachable ? 'ກຳລັງເຊື່ອມ' : 'DEMO';
+      pill.classList.toggle('is-live', !!s.connected);
+      pill.classList.toggle('is-demo', !s.reachable);
+    }
+    const adminBtn = document.getElementById('admin-entry');
+    const adminProfile = document.getElementById('admin-entry-profile');
+    const isAdmin = s.user?.role === 'admin';
+    adminBtn?.classList.toggle('hidden', !isAdmin);
+    adminProfile?.classList.toggle('hidden', !isAdmin);
+    if (s.connected) {
+      const order = getActiveOrder();
+      renderLiveDrivers(s.drivers || [], {
+        activeId: order?.status === 'matched' ? order.driverId : null
+      });
+    }
+  });
+}
+
+export async function logout() {
+  await liveLogout();
   patchDB((d) => {
     d.loggedIn = false;
   });
@@ -356,7 +446,8 @@ export function logout() {
   const otpBox = document.getElementById('auth-otp-box');
   if (otpBox) otpBox.classList.add('hidden');
   const loginBtn = document.getElementById('auth-login-btn');
-  if (loginBtn) loginBtn.textContent = 'ສົ່ງ OTP';
+  if (loginBtn) loginBtn.textContent = getLiveState().reachable ? 'ສືບຕໍ່' : 'ສົ່ງ OTP';
+  syncAuthCopy();
   toast('ອອກຈາກລະບົບສຳເລັດ ✓');
 }
 
@@ -365,7 +456,7 @@ export function logout() {
 function renderActivityPage() {
   const list = document.getElementById('activity-list');
   if (!list) return;
-  const { history } = loadDB();
+  const history = isLive() ? dbView().history : loadDB().history;
   const tabs = document.querySelectorAll('.activity-filter');
   tabs.forEach((t) =>
     t.classList.toggle('activity-filter-active', t.dataset.filter === 'all')

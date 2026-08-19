@@ -1,10 +1,12 @@
 /** Trip history from localStorage */
 import { loadDB } from './persist.js';
+import { isLive } from './live/session.js';
+import { dbView } from './live/client.js';
 
 export function renderHistory() {
   const box = document.getElementById('history-list');
   if (!box) return;
-  const { history } = loadDB();
+  const { history } = isLive() ? dbView() : loadDB();
   if (!history.length) {
     box.innerHTML =
       '<p class="text-center text-gray-500 py-8 text-xs">ຍັງບໍ່ມີປະຫວັດ — ຈົບທ່ຽວທຳອິດເພື່ອເລີ່ມ</p>';

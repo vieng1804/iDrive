@@ -1,11 +1,18 @@
 /** Real map tiles + OSRM routing + live driver movement */
-import { ST, BASE_FARE, FARE_PER_KM } from './state.js';
+import { ST } from './state.js';
 import { VIENTIANE, DRIVERS } from './data/locations.js';
 import { toast } from './ui.js';
+import { recommendFare, applyRecommendedFare } from './fare.js';
+import { getLiveState } from './live/client.js';
 
 const L = window.L;
 
 export const MAP_STYLES = [
+  {
+    name: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr: '© Esri'
+  },
   {
     name: 'Dark Mode',
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -15,11 +22,6 @@ export const MAP_STYLES = [
     name: 'Street',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attr: '© OpenStreetMap'
-  },
-  {
-    name: 'Satellite',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attr: '© Esri'
   }
 ];
 
@@ -30,8 +32,9 @@ let destMarker;
 export let driverMarker;
 let routeControl;
 let animInt;
-let nearbyMarkers = [];
+const fleet = new Map();
 let nearbyTimer;
+let didInitialFleetFit = false;
 let pickMode = 'dest'; // 'pickup' | 'dest'
 let mapPlaceHandler = null;
 let pickPulse = null;
@@ -132,14 +135,224 @@ function mkLabeledPin({ bg, fa, label, tone = 'pickup', size = 36 }) {
   });
 }
 
-function mkDriverIcon(active = false) {
-  const bg = active ? '#FACC15' : '#94a3b8';
-  const size = active ? 44 : 34;
+function mkDriverIcon(active = false, type = 'ride', heading = 0) {
+  return mkFleetIcon({ type, heading, active });
+}
+
+function vehGlyph(type) {
+  return (
+    {
+      moto: 'fa-motorcycle',
+      suv: 'fa-truck-pickup',
+      comfort: 'fa-car-side',
+      freight: 'fa-truck',
+      courier: 'fa-box'
+    }[type] || 'fa-car-side'
+  );
+}
+
+function mkFleetIcon({ type = 'ride', heading = 0, active = false, demo = false }) {
+  const size = active ? 48 : 40;
   return L.divIcon({
-    className: 'custom-pin',
-    html: `<div class="${active ? 'driver-car' : ''}" style="width:${size}px;height:${size}px;background:${bg};border-radius:12px;display:flex;align-items:center;justify-content:center;border:2px solid #1a1a1a;box-shadow:0 4px 14px rgba(0,0,0,.45);opacity:${active ? 1 : 0.85}"><i class="fa-solid fa-car" style="color:#06090E;font-size:${active ? 18 : 13}px"></i></div>`,
+    className: 'custom-pin fleet-pin',
+    html: `<div class="fleet-car ${active ? 'is-active' : ''} ${demo ? 'is-demo' : ''}" style="--rot:${heading}deg">
+      <i class="fleet-pulse"></i>
+      <span class="fleet-body"><i class="fa-solid ${vehGlyph(type)}"></i></span>
+    </div>`,
     iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2]
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -18]
+  });
+}
+
+function fleetPopup(d) {
+  const kind =
+    { ride: 'ເກັງ', moto: 'ມໍໄຊ', comfort: 'ຄອມຟອດ', suv: 'SUV' }[d.vehicleType] ||
+    'ລົດ';
+  return `<div class="fleet-pop">
+    <b>${d.name || 'ຄົນຂັບ iDrive'}</b>
+    <span>${d.car || kind}</span>
+    <small>${d.demo ? 'ຕົວຢ່າງ' : 'ອອນລາຍຕອນນີ້'}</small>
+  </div>`;
+}
+
+function bearing(aLat, aLng, bLat, bLng) {
+  const dy = bLat - aLat;
+  const dx = bLng - aLng;
+  if (Math.abs(dy) + Math.abs(dx) < 0.00004) return null;
+  return (Math.atan2(dx, dy) * 180) / Math.PI;
+}
+
+function upsertFleetCar(d, active) {
+  if (!map || d.lat == null || d.lng == null || !d.id) return;
+  const rec = fleet.get(d.id);
+  const heading = rec
+    ? bearing(rec.lat, rec.lng, d.lat, d.lng) ?? rec.heading
+    : 0;
+  if (rec) {
+    rec.marker.setLatLng([d.lat, d.lng]);
+    rec.lat = d.lat;
+    rec.lng = d.lng;
+    rec.heading = heading;
+    rec.marker.setPopupContent(fleetPopup(d));
+    const el = rec.marker.getElement()?.querySelector('.fleet-car');
+    if (el) {
+      el.style.setProperty('--rot', `${heading}deg`);
+      el.classList.toggle('is-active', !!active);
+    }
+    rec.marker.setZIndexOffset(active ? 900 : 420);
+    return;
+  }
+  const marker = L.marker([d.lat, d.lng], {
+    icon: mkFleetIcon({
+      type: d.vehicleType,
+      heading,
+      active,
+      demo: !!d.demo
+    }),
+    zIndexOffset: active ? 900 : 420,
+    keyboard: false,
+    title: d.name || 'ຄົນຂັບ'
+  })
+    .addTo(map)
+    .bindPopup(fleetPopup(d), { closeButton: false, className: 'fleet-popup' });
+  fleet.set(d.id, {
+    marker,
+    lat: d.lat,
+    lng: d.lng,
+    heading,
+    type: d.vehicleType
+  });
+}
+
+function updateFleetChip(count, demo) {
+  const chip = document.getElementById('fleet-chip');
+  const n = document.getElementById('fleet-count');
+  const label = document.getElementById('fleet-label');
+  if (n) n.textContent = String(count);
+  if (label) {
+    label.textContent = demo
+      ? count
+        ? 'ລົດຕົວຢ່າງໃກ້ທ່ານ'
+        : 'ກຳລັງໂຫຼດລົດ...'
+      : count
+        ? 'ຄົນຂັບອອນລາຍ'
+        : 'ຍັງບໍ່ມີຄົນຂັບອອນລາຍ';
+  }
+  chip?.classList.toggle('is-empty', !count);
+  chip?.classList.toggle('is-demo', !!demo);
+}
+
+export function clearNearbyDrivers() {
+  fleet.forEach((rec) => map?.removeLayer(rec.marker));
+  fleet.clear();
+  updateFleetChip(0, false);
+}
+
+export function renderLiveDrivers(drivers = [], { activeId = null } = {}) {
+  if (!map || !L) return;
+  stopDemoFleet();
+  const ids = new Set();
+  drivers.forEach((d) => {
+    const id = d.id || d.userId;
+    if (d.lat == null || d.lng == null || !id) return;
+    ids.add(id);
+    upsertFleetCar({ ...d, id }, id === activeId);
+  });
+  fleet.forEach((rec, id) => {
+    if (!ids.has(id)) {
+      map.removeLayer(rec.marker);
+      fleet.delete(id);
+    }
+  });
+  updateFleetChip(ids.size, false);
+  maybeFitFleet(false);
+}
+
+export function fitOnlineDrivers({ silent = false, maxZoom = 15 } = {}) {
+  if (!map || !L) return;
+  const pts = [...fleet.values()].map((r) => r.marker.getLatLng());
+  if (!pts.length) {
+    if (!silent) toast('ຍັງບໍ່ມີຄົນຂັບອອນລາຍໃກ້ນີ້');
+    return;
+  }
+  if (pts.length === 1) {
+    map.flyTo(pts[0], Math.min(15, maxZoom), { duration: 0.7 });
+  } else {
+    map.flyToBounds(L.latLngBounds(pts).pad(0.28), {
+      maxZoom,
+      duration: 0.75
+    });
+  }
+  if (!silent) toast(`🚗 ${pts.length} ຄົນຂັບອອນລາຍ`);
+}
+
+function maybeFitFleet(demo) {
+  if (didInitialFleetFit || ST.pickup || ST.dest || !fleet.size) return;
+  didInitialFleetFit = true;
+  setTimeout(() => fitOnlineDrivers({ silent: true, maxZoom: demo ? 14 : 15 }), 280);
+}
+
+function stopDemoFleet() {
+  if (nearbyTimer) {
+    clearInterval(nearbyTimer);
+    nearbyTimer = null;
+  }
+}
+
+function spawnNearbyDrivers() {
+  if (!map) return;
+  const live = getLiveState();
+  if (live.connected) {
+    renderLiveDrivers(live.drivers || []);
+    return;
+  }
+  clearNearbyDrivers();
+  const base = ST.pickup || { lat: VIENTIANE[0], lng: VIENTIANE[1] };
+  const types = ['ride', 'moto', 'comfort', 'suv', 'ride', 'moto', 'ride', 'suv'];
+  Array.from({ length: 8 }, (_, i) => {
+    const d = DRIVERS[i % DRIVERS.length];
+    const ang = (i / 8) * Math.PI * 2;
+    const rad = 0.006 + (i % 3) * 0.004;
+    const lat = base.lat + Math.cos(ang) * rad;
+    const lng = base.lng + Math.sin(ang) * rad * 1.15;
+    upsertFleetCar(
+      {
+        id: `demo-${d.id}-${i}`,
+        name: d.name,
+        car: d.car,
+        vehicleType: types[i] || 'ride',
+        lat,
+        lng,
+        demo: true
+      },
+      false
+    );
+    const rec = fleet.get(`demo-${d.id}-${i}`);
+    if (rec) rec.drift = { lat, lng, phase: ang, speed: 0.000035 + i * 0.000008 };
+  });
+  updateFleetChip(fleet.size, true);
+  nearbyTimer = setInterval(tickNearby, 1100);
+  maybeFitFleet(true);
+}
+
+function tickNearby() {
+  if (getLiveState().connected) {
+    stopDemoFleet();
+    return;
+  }
+  fleet.forEach((rec) => {
+    if (!rec.drift) return;
+    rec.drift.phase += 0.045;
+    const lat = rec.drift.lat + Math.sin(rec.drift.phase) * 0.0011;
+    const lng = rec.drift.lng + Math.cos(rec.drift.phase * 0.75) * 0.0011;
+    const head = bearing(rec.lat, rec.lng, lat, lng) ?? rec.heading;
+    rec.marker.setLatLng([lat, lng]);
+    rec.lat = lat;
+    rec.lng = lng;
+    rec.heading = head;
+    const el = rec.marker.getElement()?.querySelector('.fleet-car');
+    if (el) el.style.setProperty('--rot', `${head}deg`);
   });
 }
 
@@ -220,24 +433,19 @@ export function setDriverPos(lat, lng, popup) {
   if (popup) driverMarker.bindPopup(popup);
 }
 
-export function updateFares(km) {
+export function updateFares(km, minutes = ST.routeTime) {
   ['ride', 'moto', 'comfort', 'suv'].forEach((v) => {
-    const f =
-      km > 0
-        ? Math.ceil((BASE_FARE[v] + FARE_PER_KM[v] * km) / 1000) * 1000
-        : BASE_FARE[v];
+    const rec = recommendFare({
+      vehicle: v,
+      km,
+      minutes,
+      service: ST.service,
+      pickup: ST.pickup,
+      dest: ST.dest
+    });
     const priceEl = document.getElementById(`price-${v}`);
-    if (priceEl) priceEl.innerText = `${f.toLocaleString()} ₭`;
-    if (v === ST.vehicle) {
-      ST.fare = f;
-      const fareInput = document.getElementById('fare-input');
-      if (fareInput) fareInput.value = f;
-      const sug = document.getElementById('suggested-label');
-      if (sug) sug.innerText = `ແນະນຳ: ${f.toLocaleString()} ₭`;
-      const badge = document.getElementById('route-fare-badge');
-      if (badge)
-        badge.innerHTML = `<i class="fa-solid fa-coins"></i> ${f.toLocaleString()} ₭`;
-    }
+    if (priceEl) priceEl.innerText = `${rec.amount.toLocaleString()} ₭`;
+    if (v === ST.vehicle) applyRecommendedFare(rec);
   });
 }
 
@@ -276,7 +484,7 @@ export function calcRoute() {
     const timeMins = Math.round(r.summary.totalTime / 60);
     ST.routeDistance = distKm;
     ST.routeTime = timeMins;
-    updateFares(parseFloat(distKm));
+    updateFares(parseFloat(distKm), timeMins);
     document.getElementById('route-dist').innerHTML =
       `<i class="fa-solid fa-road"></i> ${distKm} ກມ`;
     document.getElementById('route-time').innerHTML =
@@ -298,30 +506,8 @@ export function calcRoute() {
   routeControl.addTo(map);
 }
 
-function spawnNearbyDrivers() {
-  if (!map) return;
-  nearbyMarkers.forEach((m) => map.removeLayer(m));
-  nearbyMarkers = [];
-  const base = ST.pickup || { lat: VIENTIANE[0], lng: VIENTIANE[1] };
-  DRIVERS.forEach((d, i) => {
-    const lat = base.lat + (Math.random() - 0.5) * 0.018;
-    const lng = base.lng + (Math.random() - 0.5) * 0.018;
-    const m = L.marker([lat, lng], { icon: mkDriverIcon(false) })
-      .addTo(map)
-      .bindPopup(`<b>${d.name}</b><br>${d.car}`);
-    m._drift = { lat, lng, phase: Math.random() * Math.PI * 2, speed: 0.00004 + i * 0.00001 };
-    nearbyMarkers.push(m);
-  });
-}
-
-function tickNearby() {
-  nearbyMarkers.forEach((m) => {
-    if (!m._drift) return;
-    m._drift.phase += 0.05;
-    const lat = m._drift.lat + Math.sin(m._drift.phase) * 0.0012;
-    const lng = m._drift.lng + Math.cos(m._drift.phase * 0.8) * 0.0012;
-    m.setLatLng([lat, lng]);
-  });
+export function followDriverCoords(lat, lng, popup) {
+  setDriverPos(lat, lng, popup);
 }
 
 export function initMap(containerId = 'map') {
@@ -348,10 +534,7 @@ export function initMap(containerId = 'map') {
   if (pickupInp) pickupInp.value = '';
   if (destInp) destInp.value = '';
   document.getElementById('route-bar')?.classList.add('hidden');
-
-  setDriverPos(17.958, 102.608, '<b>ຄົນຂັບ iDrive</b>');
   spawnNearbyDrivers();
-  nearbyTimer = setInterval(tickNearby, 1200);
 
   // Tap map to set pickup / destination
   map.on('click', (e) => {
@@ -383,15 +566,24 @@ export function toggleMapStyle() {
     attribution: s.attr,
     subdomains: 'abcd'
   }).addTo(map);
-  const lbl = document.getElementById('map-style-label');
-  if (lbl) lbl.innerText = s.name;
+  document.querySelectorAll('#map-style-label').forEach((lbl) => {
+    lbl.innerText = s.name;
+  });
   toast(`🗺️ ${s.name}`);
 }
 
 export function recenterMap() {
-  if (!map || !ST.pickup) return;
-  map.flyTo([ST.pickup.lat, ST.pickup.lng], 15, { animate: true, duration: 1 });
-  toast('📍 ໂຟກັສຈຸດຮັບ');
+  if (!map) return;
+  if (ST.pickup) {
+    map.flyTo([ST.pickup.lat, ST.pickup.lng], 15, { animate: true, duration: 1 });
+    toast('📍 ໂຟກັສຈຸດຮັບ');
+    return;
+  }
+  if (fleet.size) {
+    fitOnlineDrivers({ silent: true });
+    return;
+  }
+  map.flyTo(VIENTIANE, 14, { duration: 0.6 });
 }
 
 export function getCurrentLocation() {

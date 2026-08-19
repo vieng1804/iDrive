@@ -7,11 +7,15 @@ import {
   getActiveOrder,
   driverAcceptOffer,
   driverCounterOffer,
-  ME_AS_DRIVER,
+  getMeAsDriver,
+  setTripPhase,
   onMarket
 } from './marketplace.js';
 import { syncPassengerToMatched } from './passenger.js';
 import { isDriverApproved } from './driverApply.js';
+import { goOfflineGps, goOnlineWithGps } from './live/gps.js';
+import { isLive } from './live/session.js';
+import { dbView } from './live/client.js';
 
 let draftCounters = {};
 
@@ -26,6 +30,8 @@ export function switchRole() {
   }
 
   ST.role = toDriver ? 'driver' : 'passenger';
+  document.getElementById('app-shell')?.classList.toggle('role-driver', ST.role === 'driver');
+  document.getElementById('app-shell')?.classList.toggle('role-passenger', ST.role === 'passenger');
   const badge = document.getElementById('role-badge');
   const roleBtn = document.getElementById('role-toggle-btn');
   const roleIcon = document.getElementById('role-toggle-icon');
@@ -46,9 +52,12 @@ export function switchRole() {
     show('passenger-sheet', false);
     show('driver-panel', true);
     show('driver-active', false);
+    document.querySelector('#screen-home main')?.classList.remove('map-expanded');
+    document.getElementById('map-search-panel')?.classList.add('hidden');
     refreshDriverStats();
     renderDriverFeed();
-    toast('🚗 ໂໝດຄົນຂັບ — ຮັບງານ / ຕໍ່ລາຄາໄດ້');
+    syncDriverDock();
+    toast('🚗 ໂໝດຄົນຂັບ — ເປີດຮັບງານເພື່ອເຫັນຄຳຂໍ');
   } else {
     if (badge) {
       badge.innerText = 'ຜູ້ໂດຍສານ';
@@ -64,33 +73,60 @@ export function switchRole() {
     show('driver-panel', false);
     show('driver-active', false);
     show('passenger-sheet', true);
+    window.setSheetSnap?.('mid');
     toast('🧑 ໂໝດຜູ້ໂດຍສານ');
   }
 }
 
-export function toggleDriverOnline() {
+export async function toggleDriverOnline() {
   const on = document.getElementById('driver-online').checked;
   ST.driverOnline = on;
-  const txt = document.getElementById('driver-status-txt');
-  txt.innerText = on ? '🟢 ພ້ອມຮັບງານ' : '🔴 ອອຟໄລນ໌';
-  txt.className = `text-xs font-bold ${on ? 'text-idrive-green' : 'text-red-400'}`;
-  toast(on ? '✅ ເປີດຮັບງານ' : '⏸ ປິດຮັບງານ');
-  if (on) renderDriverFeed();
-  else {
-    const feed = document.getElementById('driver-feed');
-    if (feed)
-      feed.innerHTML =
-        '<p class="text-center text-xs text-gray-500 py-6">ອອຟໄລນ໌ — ເປີດສະວິດເພື່ອຮັບງານ</p>';
+  if (isLive()) {
+    try {
+      if (on) await goOnlineWithGps();
+      else await goOfflineGps();
+    } catch (err) {
+      toast(`⚠️ ${err.message}`);
+      document.getElementById('driver-online').checked = !on;
+      ST.driverOnline = !on;
+      syncDriverDock();
+      return;
+    }
   }
+  syncDriverDock();
+  toast(on ? '✅ ເປີດຮັບງານແລ້ວ' : '⏸ ປິດຮັບງານແລ້ວ');
+  renderDriverFeed();
 }
 
-export function refreshDriverStats(db = loadDB()) {
+export function syncDriverDock() {
+  const on = ST.driverOnline !== false;
+  const dock = document.getElementById('drv-dock');
+  const status = document.getElementById('driver-status-txt');
+  const sub = document.getElementById('drv-dock-sub');
+  const label = document.getElementById('drv-go-label');
+  dock?.classList.toggle('is-online', on);
+  dock?.classList.toggle('is-offline', !on);
+  if (status) {
+    status.innerHTML = on
+      ? '<span class="drv-radar"></span>ອອນລາຍ — ລໍຖ້າງານ'
+      : 'ອອຟໄລນ໌';
+  }
+  if (sub) {
+    sub.textContent = on
+      ? 'ກຳລັງຊອກຫາຜູ້ໂດຍສານໃກ້ທ່ານ'
+      : 'ເປີດຮັບງານເພື່ອເຫັນຄຳຂໍຈາກຜູ້ໂດຍສານ';
+  }
+  if (label) label.textContent = on ? 'ປິດຮັບງານ' : 'ເປີດຮັບງານ';
+}
+
+export function refreshDriverStats(db) {
+  const source = isLive() ? dbView() : db || loadDB();
   const earn = document.getElementById('driver-earn');
   const trips = document.getElementById('driver-trips');
   const rating = document.getElementById('driver-rating-stat');
-  if (earn) earn.innerText = `${db.earnings.toLocaleString()} ₭`;
-  if (trips) trips.innerText = String(db.tripsDone);
-  if (rating) rating.innerText = `${db.driverRating} ★`;
+  if (earn) earn.innerText = `${(source.earnings || 0).toLocaleString()} ₭`;
+  if (trips) trips.innerText = String(source.tripsDone || 0);
+  if (rating) rating.innerText = `${source.driverRating || 4.95} ★`;
 }
 
 function short(n = '', max = 28) {
@@ -100,24 +136,36 @@ function short(n = '', max = 28) {
 export function renderDriverFeed() {
   const feed = document.getElementById('driver-feed');
   if (!feed) return;
+  const countEl = document.getElementById('driver-job-count');
+  refreshDriverStats();
+  syncDriverDock();
+
+  const active = getActiveOrder();
+  if (active?.status === 'matched') {
+    showDriverActive(active);
+    feed.innerHTML = '';
+    document.getElementById('drv-dock')?.classList.add('hidden');
+    return;
+  }
+  show('driver-active', false);
+  document.getElementById('drv-dock')?.classList.remove('hidden');
 
   if (ST.driverOnline === false) {
-    feed.innerHTML =
-      '<p class="text-center text-xs text-gray-500 py-6">ອອຟໄລນ໌</p>';
+    feed.innerHTML = '';
+    if (countEl) countEl.innerText = '0';
     return;
   }
 
   const orders = getOpenOrders();
-  document.getElementById('driver-job-count').innerText = String(orders.length);
-  refreshDriverStats();
+  if (countEl) countEl.innerText = String(orders.length);
 
   if (!orders.length) {
-    feed.innerHTML =
-      '<p class="text-center text-xs text-gray-500 py-6">ຍັງບໍ່ມີງານ — ໃຫ້ຜູ້ໂດຍສານປະກາດກ່ອນ<br><span class="text-idrive-green">ຫຼືສະຫຼັບໄປໂໝດຜູ້ໂດຍສານແລ້ວກັບມາ</span></p>';
+    feed.innerHTML = '';
     return;
   }
 
   feed.innerHTML = orders
+    .slice(0, 3)
     .map((o) => {
       const counter =
         draftCounters[o.id] ||
@@ -127,60 +175,68 @@ export function renderDriverFeed() {
         { ride: 'ເກັງ', moto: 'ມໍໄຊ', comfort: 'ຄອມຟອດ', suv: 'SUV' }[
           o.vehicle
         ] || o.vehicle;
-      return `<div class="bg-idrive-dark p-3.5 rounded-2xl border border-idrive-border space-y-2.5 shadow hover:border-idrive-green transition fade-up">
-        <div class="flex justify-between items-start gap-2">
-          <div>
-            <span class="text-xs font-bold"><i class="fa-solid fa-user text-gray-400 mr-1"></i>${o.passengerName}</span>
-            <p class="text-[10px] text-gray-400 mt-0.5">${veh} • ${o.distance || '—'} ກມ • ${o.payment}</p>
-          </div>
-          <span class="text-base font-black text-idrive-green">${o.offerFare.toLocaleString()} ₭</span>
+      return `<article class="drv-req">
+        <div class="drv-req-top">
+          <div class="drv-req-fare">${Number(o.offerFare || 0).toLocaleString()} ₭</div>
+          <div class="drv-req-meta">${veh}<br>${o.distance || '—'} ກມ · ${esc(o.payment || 'ເງິນສົດ')}</div>
         </div>
-        <div class="text-xs text-gray-300 space-y-0.5">
-          <p class="flex items-center gap-1.5"><i class="fa-solid fa-circle text-[7px] text-idrive-green"></i>${short(o.pickup?.name)}</p>
-          <p class="flex items-center gap-1.5"><i class="fa-solid fa-square text-[7px] text-red-500"></i>${short(o.dest?.name)}</p>
+        <div class="drv-route">
+          <p><i class="fa-solid fa-circle text-idrive-green"></i>${esc(short(o.pickup?.name, 32))}</p>
+          <p><i class="fa-solid fa-square text-red-500"></i>${esc(short(o.dest?.name, 32))}</p>
         </div>
-        ${o.note ? `<p class="text-[10px] text-yellow-400/90">📝 ${o.note}</p>` : ''}
-        <div class="flex items-center gap-2 bg-idrive-card rounded-xl p-2 border border-idrive-border">
-          <button class="w-9 h-9 rounded-lg bg-idrive-accent font-black" onclick="adjDriverCounter('${o.id}',-5000)">−</button>
-          <div class="flex-1 text-center">
-            <div class="text-[9px] text-gray-400">ຕໍ່ລາຄາ</div>
-            <div id="ctr-${o.id}" class="font-black text-yellow-400 text-sm">${counter.toLocaleString()} ₭</div>
-          </div>
-          <button class="w-9 h-9 rounded-lg bg-idrive-accent font-black" onclick="adjDriverCounter('${o.id}',5000)">+</button>
+        ${o.note ? `<p class="drv-note">${esc(o.note)}</p>` : ''}
+        <div class="drv-bid">
+          <button type="button" onclick="adjDriverCounter('${o.id}',-5000)">−</button>
+          <div><small>ສະເໜີລາຄາ</small><b id="ctr-${o.id}">${counter.toLocaleString()} ₭</b></div>
+          <button type="button" onclick="adjDriverCounter('${o.id}',5000)">+</button>
         </div>
-        <div class="flex gap-2">
-          <button onclick="driverTakeJob('${o.id}')" class="flex-1 bg-idrive-green text-gray-950 font-black py-2.5 rounded-xl text-xs hover:bg-idrive-darkgreen transition glow-green-sm">ຮັບ ${o.offerFare.toLocaleString()} ₭</button>
-          <button onclick="driverSendCounter('${o.id}')" class="bg-idrive-accent text-yellow-400 border border-yellow-500/30 font-bold px-3 py-2.5 rounded-xl text-xs hover:bg-idrive-hover transition">ສົ່ງຕໍ່ລາຄາ</button>
+        <div class="drv-req-actions">
+          <button type="button" class="btn-take" onclick="driverTakeJob('${o.id}')">ຮັບ ${Number(o.offerFare || 0).toLocaleString()} ₭</button>
+          <button type="button" class="btn-bid" onclick="driverSendCounter('${o.id}')">ສົ່ງສະເໜີ</button>
         </div>
-      </div>`;
+      </article>`;
     })
     .join('');
 }
 
+function esc(s = '') {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function adjDriverCounter(orderId, delta) {
-  const cur = draftCounters[orderId] || 30000;
+  const cur = draftCounters[orderId] || 85000;
   draftCounters[orderId] = Math.max(5000, cur + delta);
   const el = document.getElementById(`ctr-${orderId}`);
   if (el) el.innerText = `${draftCounters[orderId].toLocaleString()} ₭`;
 }
 
-export function driverTakeJob(orderId) {
-  const matched = driverAcceptOffer(orderId, ME_AS_DRIVER);
-  if (!matched) {
-    toast('❌ ຮັບງານບໍ່ສຳເລັດ');
-    return;
+export async function driverTakeJob(orderId) {
+  try {
+    const matched = await driverAcceptOffer(orderId, getMeAsDriver());
+    if (!matched) {
+      toast('❌ ຮັບງານບໍ່ສຳເລັດ');
+      return;
+    }
+    toast(`✅ ຮັບງານ ${(matched.finalFare || matched.offerFare).toLocaleString()} ₭`);
+    showDriverActive(matched);
+    syncPassengerToMatched(matched);
+  } catch (err) {
+    toast(`❌ ${err.message}`);
   }
-  toast(`✅ ຮັບງານ ${(matched.finalFare || matched.offerFare).toLocaleString()} ₭`);
-  showDriverActive(matched);
-  // If user switches back to passenger, trip continues there
-  syncPassengerToMatched(matched);
 }
 
-export function driverSendCounter(orderId) {
-  const price = draftCounters[orderId] || 35000;
-  driverCounterOffer(orderId, ME_AS_DRIVER, price);
-  toast(`📤 ສົ່ງຕໍ່ລາຄາ ${price.toLocaleString()} ₭ — ລໍຖ້າຜູ້ໂດຍສານ`);
-  renderDriverFeed();
+export async function driverSendCounter(orderId) {
+  const price = draftCounters[orderId] || 85000;
+  try {
+    await driverCounterOffer(orderId, getMeAsDriver(), price);
+    toast(`📤 ສົ່ງຕໍ່ລາຄາ ${price.toLocaleString()} ₭ — ລໍຖ້າຜູ້ໂດຍສານ`);
+    renderDriverFeed();
+  } catch (err) {
+    toast(`❌ ${err.message}`);
+  }
 }
 
 function showDriverActive(order) {
@@ -188,20 +244,57 @@ function showDriverActive(order) {
   const box = document.getElementById('driver-active');
   if (!box) return;
   show('driver-active', true);
+  document.getElementById('drv-dock')?.classList.add('hidden');
+  const phase = order.phase || 'to_pickup';
+  const on = (p) => (phase === p ? 'is-on' : '');
   box.innerHTML = `
-    <div class="bg-idrive-green/10 border border-idrive-green/40 p-3 rounded-2xl space-y-2">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-black text-idrive-green">ງານທີ່ຮັບແລ້ວ</span>
-        <span class="font-black text-idrive-green">${(order.finalFare || order.offerFare).toLocaleString()} ₭</span>
+    <div class="drv-trip-h">
+      <div>
+        <small style="color:#9ca3af;font-size:11px;font-weight:800">ງານທີ່ກຳລັງເດີນທາງ</small>
+        <p style="margin:2px 0 0;font-weight:800">${esc(order.passengerName || 'ຜູ້ໂດຍສານ')}</p>
       </div>
-      <p class="text-xs text-gray-300">${short(order.pickup?.name)} ➔ ${short(order.dest?.name)}</p>
-      <p class="text-[10px] text-gray-400">ສະຫຼັບໄປໂໝດຜູ້ໂດຍສານເພື່ອເບິ່ງການເດີນທາງສົດ</p>
+      <b>${Number(order.finalFare || order.offerFare || 0).toLocaleString()} ₭</b>
+    </div>
+    <div class="drv-route">
+      <p><i class="fa-solid fa-circle text-idrive-green"></i>${esc(short(order.pickup?.name, 34))}</p>
+      <p><i class="fa-solid fa-square text-red-500"></i>${esc(short(order.dest?.name, 34))}</p>
+    </div>
+    <div class="drv-phases">
+      <button class="${on('waiting')}" onclick="driverAdvancePhase('waiting')">ຮອດຈຸດຮັບ</button>
+      <button class="${on('onboard')}" onclick="driverAdvancePhase('onboard')">ຜູ້ໂດຍສານຂຶ້ນ</button>
+      <button class="${on('arrived')}" onclick="driverAdvancePhase('arrived')">ສົ່ງຮອດ</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button type="button" onclick="openModal('chat-modal')" class="btn-bid" style="flex:1;height:42px">ແຊັດ</button>
+      <button type="button" onclick="startCall()" class="btn-take" style="flex:1;height:42px">ໂທ</button>
     </div>`;
+}
+
+export async function driverAdvancePhase(phase) {
+  const order = getActiveOrder();
+  if (!order) return;
+  try {
+    await setTripPhase(order.id, phase);
+    toast(
+      phase === 'waiting'
+        ? '📍 ຮອດຈຸດຮັບແລ້ວ'
+        : phase === 'onboard'
+          ? '🚗 ເລີ່ມເດີນທາງ'
+          : '✅ ຮອດປາຍທາງ'
+    );
+    showDriverActive({ ...order, phase });
+  } catch (err) {
+    toast(`⚠️ ${err.message}`);
+  }
 }
 
 export function bootDriverListeners() {
   onMarket(() => {
-    if (ST.role === 'driver') renderDriverFeed();
+    if (ST.role === 'driver') {
+      renderDriverFeed();
+      const active = getActiveOrder();
+      if (active?.status === 'matched' && active.driverId) showDriverActive(active);
+    }
     refreshDriverStats();
   });
 }
